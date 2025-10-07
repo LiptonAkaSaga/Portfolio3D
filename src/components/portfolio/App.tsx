@@ -13,7 +13,7 @@ const App: React.FC = () => {
   const [glitchStage, setGlitchStage] = useState(0);
 
   useEffect(() => {
-    const stage1 = setTimeout(() => setGlitchStage(1), 3000); // shuffle text
+    const stage1 = setTimeout(() => setGlitchStage(1), 2500); // shuffle text
     const stage2 = setTimeout(() => setGlitchStage(2), 8000); // image glitch
     return () => {
       clearTimeout(stage1);
@@ -37,7 +37,7 @@ const App: React.FC = () => {
   return (
     <>
       {glitchStage === 2 ? (
-        <GlitchWrapper delayTime={1} rampUpTime={30}>
+        <GlitchWrapper delayTime={0} rampUpTime={30}>
           {content}
         </GlitchWrapper>
       ) : (

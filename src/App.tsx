@@ -1,27 +1,18 @@
-import './App.css';
-import ThreeScene from './components/ThreeScene';
+// App.tsx
+import React from 'react';
+import { Canvas } from '@react-three/fiber';
+import Scene from './components/Scene';
 
-function App() {
+const App: React.FC = () => {
   return (
-    <>
-      <ThreeScene />
-      <iframe
-        src="/index.html"
-        title="Embedded Page"
-        width="100%"
-        height="100%"
-        style={{
-          border: 'none',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          zIndex: 1,
-        }}
-      />
-    </>
+    <Canvas
+      orthographic
+      camera={{ zoom: 100, position: [0, 0, 10] }}
+      style={{ width: '100vw', height: '100vh' }}
+    >
+      <Scene />
+    </Canvas>
   );
-}
+};
 
 export default App;
