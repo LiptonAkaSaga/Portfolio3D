@@ -7,12 +7,16 @@ interface Props {
   children: React.ReactNode;
   delayTime?: number; // Czas opóźnienia w sekundach
   rampUpTime?: number; // Czas narastania efektu w sekundach
+  onComplete?: () => void; // Callback po zakończeniu efektu
+  freezeOnComplete?: boolean; // Czy zatrzymać efekt w ostatnim stanie
 }
 
 const GlitchWrapper: React.FC<Props> = ({
   children,
   delayTime = 0, // 10 sekund opóźnienia
   rampUpTime = 5, // 5 sekund narastania
+  onComplete,
+  freezeOnComplete = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -21,6 +25,8 @@ const GlitchWrapper: React.FC<Props> = ({
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const uniformsRef = useRef<any>(null);
   const startTimeRef = useRef<number | null>(null);
+  const completedRef = useRef<boolean>(false);
+  const frozenRef = useRef<boolean>(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), {
@@ -144,30 +150,57 @@ const GlitchWrapper: React.FC<Props> = ({
       const delta = (now - last) / 1000000; // Drastycznie zwiększone z 100000
       last = now;
 
-      // Dodajemy losowość do aktualizacji czasu - tylko czasami aktualizujemy czas
-      if (Math.random() < 0.2) {
-        // Tylko 20% szans na aktualizację w każdej klatce
-        uniforms.uTime.value += delta;
-      }
+      // Jeśli jest frozen, nie zmieniamy czasu ani uniformów - zatrzymujemy w ostatnim stanie
+      if (!frozenRef.current) {
+        // Dodajemy losowość do aktualizacji czasu - tylko czasami aktualizujemy czas
+        if (Math.random() < 0.2) {
+          // Tylko 20% szans na aktualizację w każdej klatce
+          uniforms.uTime.value += delta;
+        }
 
-      const currentTime = performance.now() / 1000;
-      const elapsedTime = currentTime - (startTimeRef.current || 0);
+        const currentTime = performance.now() / 1000;
+        const elapsedTime = currentTime - (startTimeRef.current || 0);
 
-      // Obliczamy wartości efektów w zależności od czasu
-      if (elapsedTime > delayTime) {
-        // Jeśli minęło opóźnienie, zaczynamy ramping
-        const rampProgress = Math.min(1.0, (elapsedTime - delayTime) / rampUpTime);
+        // Obliczamy wartości efektów w zależności od czasu
+        if (elapsedTime > delayTime) {
+          // Jeśli minęło opóźnienie, zaczynamy ramping
+          const rampProgress = Math.min(1.0, (elapsedTime - delayTime) / rampUpTime);
 
-        // Dodajemy pulsację do efektu glitch - wolniejsze zmiany intensywności
-        const pulseIntensity = 0.6 + Math.sin(elapsedTime * 0.03) * 0.4; // Wolna sinusoida
+          // Sprawdzamy czy efekt powinien się zakończyć (po rampUpTime sekund od rozpoczęcia)
+          if (elapsedTime >= delayTime + rampUpTime && !completedRef.current) {
+            completedRef.current = true;
 
-        // Płynne przejście z 0 do docelowych wartości z pulsacją
-        uniforms.glitchAmount.value = targetGlitchAmount * rampProgress * pulseIntensity;
-        uniforms.rgbShift.value = targetRgbShift * rampProgress;
-      } else {
-        // Przed opóźnieniem, efekt jest wyłączony
-        uniforms.glitchAmount.value = 0;
-        uniforms.rgbShift.value = 0;
+            if (freezeOnComplete) {
+              // Zatrzymujemy animację w ostatnim stanie glitch
+              frozenRef.current = true;
+              // Wywołujemy callback po krótkim opóźnieniu
+              setTimeout(() => {
+                if (onComplete) {
+                  onComplete();
+                }
+              }, 100);
+            } else {
+              // Normalnie kończymy efekt
+              if (onComplete) {
+                onComplete();
+              }
+              return; // Kończymy animację
+            }
+          }
+
+          if (!frozenRef.current) {
+            // Dodajemy pulsację do efektu glitch - wolniejsze zmiany intensywności
+            const pulseIntensity = 0.6 + Math.sin(elapsedTime * 0.03) * 0.4; // Wolna sinusoida
+
+            // Płynne przejście z 0 do docelowych wartości z pulsacją
+            uniforms.glitchAmount.value = targetGlitchAmount * rampProgress * pulseIntensity;
+            uniforms.rgbShift.value = targetRgbShift * rampProgress;
+          }
+        } else {
+          // Przed opóźnieniem, efekt jest wyłączony
+          uniforms.glitchAmount.value = 0;
+          uniforms.rgbShift.value = 0;
+        }
       }
 
       renderer.render(scene, camera);
