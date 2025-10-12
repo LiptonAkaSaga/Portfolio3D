@@ -46,6 +46,11 @@ const Navbar: React.FC = () => (
               <span className="oneword">/</span>contact-me
             </a>
           </li>
+          <li className="nav-item">
+            <a className="nav-link" href="/cyberpunk">
+              <span className="oneword">/</span>cyberpunk
+            </a>
+          </li>
           <li className="nav-item dropdown">
             <a
               className="nav-link dropdown-toggle"

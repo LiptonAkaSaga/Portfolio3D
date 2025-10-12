@@ -35,7 +35,7 @@ const App: React.FC = () => {
     document.body.style.backgroundColor = '#333333';
     document.body.style.color = '#fdfff7';
     document.body.style.fontFamily = 'Fira Code';
-    
+
     return () => {
       // Nie resetuj stylów tutaj, bo może to być potrzebne dla innych stron
     };
@@ -66,9 +66,9 @@ const App: React.FC = () => {
 
   const content = (
     <>
-      <img 
-        src={backgroundFiller} 
-        alt="background" 
+      <img
+        src={backgroundFiller}
+        alt="background"
         className="background-filler"
         onLoad={() => console.log('Background filler loaded successfully')}
         onError={(e) => console.error('Background filler failed to load:', e)}
@@ -84,19 +84,19 @@ const App: React.FC = () => {
   );
 
   return (
-    <div 
-      style={{ 
+    <div
+      style={{
         backgroundColor: '#333333', // var(--Background-color)
         color: '#fdfff7', // var(--White-color)
         minHeight: '100vh',
         fontFamily: 'Fira Code',
         position: 'relative',
-        zIndex: 1
+        zIndex: 1,
       }}
     >
       {/* Przycisk testowy - można usunąć po testach */}
       {!showVideo && !showTVEffect && (
-        <button 
+        <button
           onClick={testVideoTransition}
           style={{
             position: 'fixed',
@@ -108,7 +108,7 @@ const App: React.FC = () => {
             color: 'white',
             border: 'none',
             borderRadius: '5px',
-            cursor: 'pointer'
+            cursor: 'pointer',
           }}
         >
           🎬 Test Video
