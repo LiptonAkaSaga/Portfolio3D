@@ -14,7 +14,7 @@ function createAsciiTexture(): CanvasTexture {
   const ctx = canvas.getContext('2d')!;
 
   // ASCII characters od najciemniejszego do najjaśniejszego
-  const chars = ' cwel';
+  const chars = ' .:!*oe&#%@';
   const fontSize = 16;
   const charWidth = fontSize * 0.6;
 

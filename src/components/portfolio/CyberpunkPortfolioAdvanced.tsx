@@ -212,7 +212,7 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
                 <div className="frame-corner br"></div>
                 <div className="image-placeholder">
                   <div className="placeholder-text">
-                    <span className="terminal-prompt">{'>'}</span> INSERT_IMAGE
+                    <img src="/czyzzz2.png" alt="Profile" className="profile-image" />
                   </div>
                 </div>
               </div>

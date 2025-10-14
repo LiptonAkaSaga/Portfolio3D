@@ -1,4 +1,4 @@
-import React, { Suspense, useRef, useState, useEffect } from 'react';
+import React, { Suspense, useRef, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { PerspectiveCamera, Environment } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
@@ -6,126 +6,7 @@ import { BlendFunction } from 'postprocessing';
 import * as THREE from 'three';
 import AsciiHead from './AsciiHead';
 import { TextureAsciiEffect } from './TextureAsciiEffect';
-
-// Scan Effect Shader
-const ScanEffect = ({ scanProgress = 0 }: { scanProgress: number }) => {
-  return null; // Implement later with custom shader
-};
-
-// Ripple Effect Component
-interface Ripple {
-  age: number;
-  position: THREE.Vector2;
-  color: THREE.Vector2;
-}
-
-const RippleSystem: React.FC = () => {
-  const [ripples, setRipples] = useState<Ripple[]>([]);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const handleClick = (event: MouseEvent) => {
-      setRipples((prev) => [
-        ...prev,
-        {
-          age: 0,
-          position: new THREE.Vector2(event.clientX, event.clientY),
-          color: new THREE.Vector2(
-            (event.clientX / window.innerWidth) * 255,
-            (event.clientY / window.innerHeight) * 255
-          ),
-        },
-      ]);
-    };
-
-    window.addEventListener('click', handleClick);
-    return () => window.removeEventListener('click', handleClick);
-  }, []);
-
-  useEffect(() => {
-    if (!canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const RIPPLE_SPEED = 0.3;
-    const RIPPLE_PEAK = 0.2;
-
-    let animationId: number;
-
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Update and draw ripples
-      setRipples((prev) => {
-        const updated = prev
-          .map((ripple) => ({
-            ...ripple,
-            age: ripple.age + 0.016 * RIPPLE_SPEED, // ~60fps
-          }))
-          .filter((ripple) => ripple.age < 1);
-
-        // Draw each ripple
-        updated.forEach((ripple) => {
-          const size = canvas.height * easeOutQuart(ripple.age);
-          const alpha =
-            ripple.age < RIPPLE_PEAK
-              ? easeOutQuart(ripple.age / RIPPLE_PEAK)
-              : 1 - (ripple.age - RIPPLE_PEAK) / (1 - RIPPLE_PEAK);
-
-          const gradient = ctx.createRadialGradient(
-            ripple.position.x,
-            ripple.position.y,
-            size * 0.25,
-            ripple.position.x,
-            ripple.position.y,
-            size
-          );
-
-          gradient.addColorStop(1, 'rgba(0, 255, 255, 0.5)');
-          gradient.addColorStop(0.8, `rgba(0, 255, 255, ${alpha})`);
-          gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-
-          ctx.beginPath();
-          ctx.fillStyle = gradient;
-          ctx.arc(ripple.position.x, ripple.position.y, size, 0, Math.PI * 2);
-          ctx.fill();
-        });
-
-        return updated;
-      });
-
-      animationId = requestAnimationFrame(animate);
-    };
-
-    animate();
-
-    return () => {
-      if (animationId) cancelAnimationFrame(animationId);
-    };
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'none',
-        zIndex: 2,
-      }}
-    />
-  );
-};
-
-const easeOutQuart = (t: number): number => 1 - Math.pow(1 - t, 4);
+import RippleEffect from './RippleEffect';
 
 // Floating Particles
 const FloatingParticles: React.FC = () => {
@@ -210,7 +91,7 @@ const HolographicRings: React.FC = () => {
       if (ring) {
         ring.rotation.x = state.clock.elapsedTime * 0.5;
         ring.rotation.y = state.clock.elapsedTime * 0.3 + i;
-        ring.scale.setScalar(1 + Math.sin(state.clock.elapsedTime + i) * 0.1);
+        ring.scale.setScalar(1.4 + Math.sin(state.clock.elapsedTime + i) * 0.1);
       }
     });
   });
@@ -246,7 +127,7 @@ const SceneContent: React.FC<{ modelPath: string }> = ({ modelPath }) => {
       <ambientLight intensity={0.2} />
       <pointLight position={[-5, 5, -5]} color="#00aaff" intensity={4} distance={20} />
       <pointLight position={[-5, 0, 5]} color="#00aaff" intensity={1} distance={20} />
-      <pointLight position={[5, 0, 0]} color="#ff00ff" intensity={3} distance={20} />
+      <pointLight position={[5, 0, 0]} color="#ff00ff" intensity={6} distance={30} />
       <spotLight
         position={[0, 8, 0]}
         angle={0.3}
@@ -256,13 +137,15 @@ const SceneContent: React.FC<{ modelPath: string }> = ({ modelPath }) => {
         castShadow
       />
 
-      {/* Main Model */}
+      {/* Main Model - z ograniczoną rotacją */}
       <Suspense fallback={null}>
         <AsciiHead
           modelPath={modelPath}
-          position={[2, -1, 0]}
+          position={[0, -1.25, 0]}
           scale={0.13}
-          rotationSpeed={0.00001}
+          rotationSpeed={0.01}
+          maxRotationX={Math.PI / 30}
+          maxRotationY={Math.PI / 4}
         />
       </Suspense>
 
@@ -294,25 +177,8 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
   modelPath = '/models/head.glb',
   backgroundColor = '#000000',
 }) => {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const handleMouseMove = (event: MouseEvent) => {
-      setMousePosition({
-        x: (event.clientX / window.innerWidth) * 2 - 1,
-        y: -(event.clientY / window.innerHeight) * 2 + 1,
-      });
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
-      {/* Ripple Effect Overlay */}
-      {enableRipples && <RippleSystem />}
-
       {/* 3D Canvas */}
       <Canvas gl={{ antialias: true, alpha: false }} style={{ background: backgroundColor }}>
         <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={35} />
@@ -324,7 +190,7 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
           {enableAscii && (
             <TextureAsciiEffect
               cellSize={[8, 12]}
-              brightness={1.8}
+              brightness={2.9}
               color1={[0.0, 0.4, 0.6]}
               color2={[0.0, 0.8, 1.0]}
             />
@@ -338,6 +204,9 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
               blendFunction={BlendFunction.ADD}
             />
           )}
+
+          {/* Nowy Ripple Effect - działa teraz! */}
+          {enableRipples && <RippleEffect />}
         </EffectComposer>
       </Canvas>
 
@@ -396,4 +265,5 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
     </div>
   );
 };
+
 export default AdvancedCyberpunkScene;
