@@ -8,12 +8,14 @@ interface AsciiHeadProps {
   modelPath?: string;
   rotationSpeed?: number;
   scale?: number;
+  position?: [number, number, number];
 }
 
 const AsciiHead: React.FC<AsciiHeadProps> = ({
   modelPath = '/models/head.glb',
   rotationSpeed = 0.00001,
   scale = 1,
+  position = [0, 0, 0],
 }) => {
   const groupRef = useRef<THREE.Group>(null);
 
@@ -65,7 +67,7 @@ const AsciiHead: React.FC<AsciiHeadProps> = ({
   }, [clonedScene]);
 
   return (
-    <group ref={groupRef} scale={scale}>
+    <group position={position} ref={groupRef} scale={scale}>
       <primitive object={clonedScene} />
     </group>
   );

@@ -1,41 +1,19 @@
-// src/components/portfolio/CyberpunkPortfolio.tsx
-import React, { useState } from 'react';
-import CyberpunkScene from '../3d/CyberpunkScene';
-import Navbar from './Navbar';
-import Projects from './Projects';
-import AboutMe from './AboutMe';
-import Pricing from './Pricing';
-import ContactMe from './ContactMe';
-import Footer from './Footer';
-import './css/Style.css';
+import React from 'react';
+import AdvancedCyberpunkScene from '../3d/AdvancedCyberpunkScene';
 
-const CyberpunkPortfolio: React.FC = () => {
-  const [showAscii, setShowAscii] = useState(true);
-  const [showBloom, setShowBloom] = useState(true);
-
+function UltimatePortfolio() {
   return (
-    <div style={{ position: 'relative', padding: 0 }}>
-      {/* Navbar */}
-
-      {/* 3D Header Section */}
-      <section
-        id="header-3d"
-        style={{
-          position: 'relative',
-          width: '100%',
-          height: '100vh',
-          overflow: 'hidden',
-        }}
-      >
-        {/* 3D Canvas */}
-        <CyberpunkScene
-          enableAscii={showAscii}
-          enableBloom={showBloom}
-          enableControls={false}
-          backgroundColor="#0a0a0a"
+    <div>
+      {/* Header z wszystkimi efektami */}
+      <section style={{ height: '100vh', position: 'relative' }}>
+        <AdvancedCyberpunkScene
+          enableAscii={true}
+          enableBloom={true}
+          enableRipples={true}
+          modelPath="/models/head.glb"
         />
 
-        {/* Overlay Text */}
+        {/* Hero Text */}
         <div
           style={{
             position: 'absolute',
@@ -43,88 +21,33 @@ const CyberpunkPortfolio: React.FC = () => {
             left: '50%',
             transform: 'translate(-50%, -50%)',
             textAlign: 'center',
-            zIndex: 5,
+            zIndex: 20,
             pointerEvents: 'none',
-            visibility: 'hidden',
           }}
         >
           <h1
             style={{
-              fontSize: 'clamp(2rem, 8vw, 6rem)',
+              fontSize: '5rem',
               fontWeight: 'bold',
               color: '#00ffff',
-              textShadow: '0 0 20px #00ffff, 0 0 40px #00ffff',
+              textShadow: '0 0 30px #00ffff',
+              fontFamily: 'Fira Code',
               marginBottom: '20px',
-              fontFamily: 'Fira Code, monospace',
             }}
           >
             CYBERPUNK
             <br />
-            <span style={{ color: '#ff00ff' }}>PORTFOLIO</span>
+            <span style={{ color: '#ff00ff' }}>DEVELOPER</span>
           </h1>
           <p
             style={{
-              fontSize: 'clamp(1rem, 2vw, 1.5rem)',
-              color: '#ffffff',
-              textShadow: '0 0 10px #ffffff',
-              fontFamily: 'Fira Code, monospace',
+              fontSize: '1.5rem',
+              color: '#fff',
+              fontFamily: 'Fira Code',
             }}
           >
-            {'>'} Full-Stack Developer • 3D Artist • Cyberpunk Enthusiast
+            {'>'} Crafting Digital Experiences
           </p>
-        </div>
-
-        {/* Controls Panel */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '100px',
-            right: '20px',
-            background: 'rgba(0, 0, 0, 0.7)',
-            border: '2px solid #00ffff',
-            borderRadius: '8px',
-            padding: '15px',
-            zIndex: 10,
-            fontFamily: 'Fira Code, monospace',
-            color: '#00ffff',
-          }}
-        >
-          <h3 style={{ fontSize: '14px', marginBottom: '10px', color: '#ff00ff' }}>
-            EFFECTS CONTROL
-          </h3>
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              marginBottom: '8px',
-              cursor: 'pointer',
-              fontSize: '12px',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={showAscii}
-              onChange={(e) => setShowAscii(e.target.checked)}
-              style={{ marginRight: '8px' }}
-            />
-            ASCII Effect
-          </label>
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              cursor: 'pointer',
-              fontSize: '12px',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={showBloom}
-              onChange={(e) => setShowBloom(e.target.checked)}
-              style={{ marginRight: '8px' }}
-            />
-            Bloom / Glow
-          </label>
         </div>
 
         {/* Scroll Indicator */}
@@ -135,7 +58,13 @@ const CyberpunkPortfolio: React.FC = () => {
             left: '50%',
             transform: 'translateX(-50%)',
             animation: 'bounce 2s infinite',
-            zIndex: 5,
+            zIndex: 20,
+            cursor: 'pointer',
+          }}
+          onClick={() => {
+            document.getElementById('content')?.scrollIntoView({
+              behavior: 'smooth',
+            });
           }}
         >
           <div
@@ -164,48 +93,32 @@ const CyberpunkPortfolio: React.FC = () => {
         </div>
       </section>
 
-      {/* Animations */}
+      {/* Content Section */}
+      <section
+        id="content"
+        style={{
+          minHeight: '100vh',
+          background: '#0a0a0a',
+          color: '#fff',
+          padding: '100px 50px',
+        }}
+      >
+        <h2>Projects</h2>
+        {/* Your content here */}
+      </section>
+
       <style>{`
         @keyframes bounce {
-          0%, 100% {
-            transform: translateX(-50%) translateY(0);
-          }
-          50% {
-            transform: translateX(-50%) translateY(-10px);
-          }
+          0%, 100% { transform: translateX(-50%) translateY(0); }
+          50% { transform: translateX(-50%) translateY(-10px); }
         }
-        
         @keyframes scroll {
-          0% {
-            top: 8px;
-            opacity: 1;
-          }
-          100% {
-            top: 28px;
-            opacity: 0;
-          }
-        }
-        
-        /* Cyberpunk scrollbar */
-        ::-webkit-scrollbar {
-          width: 10px;
-        }
-        
-        ::-webkit-scrollbar-track {
-          background: #0a0a0a;
-        }
-        
-        ::-webkit-scrollbar-thumb {
-          background: linear-gradient(180deg, #00ffff, #ff00ff);
-          border-radius: 5px;
-        }
-        
-        ::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(180deg, #00cccc, #cc00cc);
+          0% { top: 8px; opacity: 1; }
+          100% { top: 28px; opacity: 0; }
         }
       `}</style>
     </div>
   );
-};
+}
 
-export default CyberpunkPortfolio;
+export default UltimatePortfolio;
