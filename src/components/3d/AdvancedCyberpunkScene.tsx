@@ -6,12 +6,11 @@ import { BlendFunction } from 'postprocessing';
 import * as THREE from 'three';
 import AsciiHead from './AsciiHead';
 import { TextureAsciiEffect } from './TextureAsciiEffect';
-import RippleEffect from './RippleEffect';
 
 // Floating Particles
 const FloatingParticles: React.FC = () => {
   const particlesRef = useRef<THREE.Points>(null);
-  const PARTICLE_COUNT = 150;
+  const PARTICLE_COUNT = 250;
 
   const [positions, speeds] = React.useMemo(() => {
     const pos = new Float32Array(PARTICLE_COUNT * 3);
@@ -164,7 +163,6 @@ const SceneContent: React.FC<{ modelPath: string }> = ({ modelPath }) => {
 interface AdvancedCyberpunkSceneProps {
   enableAscii?: boolean;
   enableBloom?: boolean;
-  enableRipples?: boolean;
   enableParticles?: boolean;
   modelPath?: string;
   backgroundColor?: string;
@@ -173,7 +171,6 @@ interface AdvancedCyberpunkSceneProps {
 const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
   enableAscii = true,
   enableBloom = true,
-  enableRipples = true,
   modelPath = '/models/head.glb',
   backgroundColor = '#000000',
 }) => {
@@ -204,9 +201,6 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
               blendFunction={BlendFunction.ADD}
             />
           )}
-
-          {/* Nowy Ripple Effect - działa teraz! */}
-          {enableRipples && <RippleEffect />}
         </EffectComposer>
       </Canvas>
 
@@ -238,30 +232,6 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
           zIndex: 1,
         }}
       />
-
-      {/* Info Overlay */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '30px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          color: '#00ffff',
-          fontFamily: 'Fira Code, monospace',
-          fontSize: '12px',
-          textAlign: 'center',
-          textShadow: '0 0 10px #00ffff',
-          pointerEvents: 'none',
-          zIndex: 10,
-        }}
-      >
-        <p style={{ margin: '5px 0', fontWeight: 'bold' }}>
-          CLICK TO CREATE RIPPLES • MOVE MOUSE TO INTERACT
-        </p>
-        <p style={{ margin: '5px 0', opacity: 0.7 }}>
-          ADVANCED CYBERPUNK SCENE • ASCII + 3D + EFFECTS
-        </p>
-      </div>
     </div>
   );
 };

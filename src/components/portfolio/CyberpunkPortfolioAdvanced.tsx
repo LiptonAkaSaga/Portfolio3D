@@ -6,23 +6,62 @@ import './CyberpunkPortfolioAdvanced.css';
 const CyberpunkPortfolioAdvanced: React.FC = () => {
   const [showAscii, setShowAscii] = useState(true);
   const [showBloom, setShowBloom] = useState(true);
-  const [showRipples, setShowRipples] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [isScrolling, setIsScrolling] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Hook do animacji przy scrollowaniu
   useScrollAnimation();
 
-  // Loading intro effect
+  // Sections array for snap scroll navigation
+  const sections = ['home', 'about', 'skills', 'projects', 'contact'];
 
-  // Scroll spy effect
+  // Check if device is mobile or has small screen
+  useEffect(() => {
+    const checkMobile = () => {
+      const isMobileDevice = window.innerWidth <= 768 || window.innerHeight <= 600;
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const newIsMobile = isMobileDevice || isTouchDevice;
+
+      // Update mobile state
+      setIsMobile(newIsMobile);
+
+      // Dynamically adjust snap scroll based on screen size
+      if (newIsMobile) {
+        document.documentElement.style.scrollSnapType = 'none';
+      } else {
+        document.documentElement.style.scrollSnapType = 'y mandatory';
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    window.addEventListener('orientationchange', checkMobile);
+
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('orientationchange', checkMobile);
+    };
+  }, []);
+
+  // Enhanced scroll management with snap behavior
   useEffect(() => {
     if (!isLoaded) return;
 
+    let scrollTimeout: number;
+
     const handleScroll = () => {
-      const sections = ['home', 'about', 'skills', 'projects', 'contact'];
-      const scrollPosition = window.scrollY + 200;
+      setIsScrolling(true);
+
+      // Clear previous timeout
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+
+      // Update active section based on scroll position
+      const scrollPosition = window.scrollY + window.innerHeight / 2;
 
       for (const section of sections) {
         const element = document.getElementById(section);
@@ -36,18 +75,179 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
           }
         }
       }
+
+      // Auto-snap to nearest section after scroll ends (only on desktop)
+      scrollTimeout = window.setTimeout(() => {
+        setIsScrolling(false);
+        if (!isMobile) {
+          snapToNearestSection();
+        }
+      }, 150);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [isLoaded]);
+    const snapToNearestSection = () => {
+      // Only snap on desktop devices
+      if (isMobile) return;
+
+      const scrollPosition = window.scrollY;
+      let nearestSection = sections[0];
+      let minDistance = Infinity;
+
+      sections.forEach((sectionId) => {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          const distance = Math.abs(element.offsetTop - scrollPosition);
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestSection = sectionId;
+          }
+        }
+      });
+
+      // Snap to nearest section if we're not already there
+      const nearestElement = document.getElementById(nearestSection);
+      if (nearestElement && Math.abs(nearestElement.offsetTop - scrollPosition) > 50) {
+        nearestElement.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }
+    };
+
+    // Wheel event handler for section-by-section navigation (desktop only)
+    const handleWheel = (e: WheelEvent) => {
+      // Disable wheel navigation on mobile devices
+      if (isMobile || isScrolling) return;
+
+      e.preventDefault();
+
+      const currentIndex = sections.indexOf(activeSection);
+      let targetIndex = currentIndex;
+
+      if (e.deltaY > 0 && currentIndex < sections.length - 1) {
+        // Scroll down
+        targetIndex = currentIndex + 1;
+      } else if (e.deltaY < 0 && currentIndex > 0) {
+        // Scroll up
+        targetIndex = currentIndex - 1;
+      }
+
+      if (targetIndex !== currentIndex) {
+        scrollToSection(sections[targetIndex]);
+      }
+    };
+
+    // Keyboard navigation
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isScrolling) return;
+
+      const currentIndex = sections.indexOf(activeSection);
+      let targetIndex = currentIndex;
+
+      switch (e.key) {
+        case 'ArrowDown':
+        case 'PageDown':
+          e.preventDefault();
+          if (currentIndex < sections.length - 1) {
+            targetIndex = currentIndex + 1;
+          }
+          break;
+        case 'ArrowUp':
+        case 'PageUp':
+          e.preventDefault();
+          if (currentIndex > 0) {
+            targetIndex = currentIndex - 1;
+          }
+          break;
+        case 'Home':
+          e.preventDefault();
+          targetIndex = 0;
+          break;
+        case 'End':
+          e.preventDefault();
+          targetIndex = sections.length - 1;
+          break;
+      }
+
+      if (targetIndex !== currentIndex) {
+        scrollToSection(sections[targetIndex]);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    // Add wheel and keyboard navigation only on desktop
+    if (!isMobile) {
+      window.addEventListener('wheel', handleWheel, { passive: false });
+      window.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (!isMobile) {
+        window.removeEventListener('wheel', handleWheel);
+        window.removeEventListener('keydown', handleKeyDown);
+      }
+      if (scrollTimeout) {
+        clearTimeout(scrollTimeout);
+      }
+    };
+  }, [isLoaded, activeSection, isScrolling, isMobile]);
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
+      setIsScrolling(true);
+
+      // Different behavior for mobile vs desktop
+      if (isMobile) {
+        // On mobile, just scroll smoothly without snap manipulation
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+
+        setTimeout(() => {
+          setIsScrolling(false);
+        }, 800);
+      } else {
+        // Desktop behavior with snap scroll manipulation
+        document.documentElement.style.scrollSnapType = 'none';
+
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+
+        setTimeout(() => {
+          document.documentElement.style.scrollSnapType = 'y mandatory';
+          setIsScrolling(false);
+        }, 1000);
+      }
     }
   };
+
+  // Loading effect simulation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 2000);
+
+    const progressTimer = setInterval(() => {
+      setLoadingProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(progressTimer);
+          return 100;
+        }
+        return prev + Math.random() * 15;
+      });
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(progressTimer);
+    };
+  }, []);
 
   return (
     <div className={`cyberpunk-portfolio ${isLoaded ? 'loaded' : ''}`}>
@@ -87,7 +287,6 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
         <AdvancedCyberpunkScene
           enableAscii={showAscii}
           enableBloom={showBloom}
-          enableRipples={showRipples}
           modelPath="/models/head.glb"
           backgroundColor="#0a0a0a"
         />
@@ -146,14 +345,6 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
                 onChange={(e) => setShowBloom(e.target.checked)}
               />
               <span className="control-label">BLOOM</span>
-            </label>
-            <label className="control-item">
-              <input
-                type="checkbox"
-                checked={showRipples}
-                onChange={(e) => setShowRipples(e.target.checked)}
-              />
-              <span className="control-label">RIPPLE</span>
             </label>
           </div>
         </div>
@@ -522,6 +713,20 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* Section Navigator */}
+      <div className="section-navigator">
+        {sections.map((section) => (
+          <button
+            key={section}
+            className={`nav-dot ${activeSection === section ? 'active' : ''}`}
+            onClick={() => scrollToSection(section)}
+            title={section.charAt(0).toUpperCase() + section.slice(1)}
+          >
+            <span className="dot-inner"></span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 };
