@@ -8,6 +8,7 @@ import './components/portfolio/css/Style.css'; // <-- styl główny
 import CyberpunkPortfolioAdvanced from './components/portfolio/CyberpunkPortfolioAdvanced.tsx';
 import HomeFullscreen3D from './components/3d/HomeFullscreen3D.tsx';
 import UltimatePortfolio from './components/portfolio/CyberpunkPortfolio.tsx';
+import CyberpunkIntro from './components/CyberpunkIntro.tsx';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -18,6 +19,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/cyberpunk" element={<UltimatePortfolio />} />
         <Route path="/3d-home" element={<HomeFullscreen3D />} />
         <Route path="/cyberpunk-advanced" element={<CyberpunkPortfolioAdvanced />} />
+        <Route path="/cyberpunk-intro" element={<CyberpunkIntro />} />
       </Routes>
     </Router>
   </React.StrictMode>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdvancedCyberpunkScene from '../3d/AdvancedCyberpunkScene';
+import { useScrollAnimation } from '../../hooks/useScrollAnimation';
 import './CyberpunkPortfolioAdvanced.css';
 
 const CyberpunkPortfolioAdvanced: React.FC = () => {
@@ -7,9 +8,18 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
   const [showBloom, setShowBloom] = useState(true);
   const [showRipples, setShowRipples] = useState(true);
   const [activeSection, setActiveSection] = useState('home');
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
+  // Hook do animacji przy scrollowaniu
+  useScrollAnimation();
+
+  // Loading intro effect
 
   // Scroll spy effect
   useEffect(() => {
+    if (!isLoaded) return;
+
     const handleScroll = () => {
       const sections = ['home', 'about', 'skills', 'projects', 'contact'];
       const scrollPosition = window.scrollY + 200;
@@ -30,7 +40,7 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [isLoaded]);
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
@@ -40,9 +50,9 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
   };
 
   return (
-    <div className="cyberpunk-portfolio">
+    <div className={`cyberpunk-portfolio ${isLoaded ? 'loaded' : ''}`}>
       {/* Navigation */}
-      <nav className="cyber-nav">
+      <nav className="cyber-nav fade-in">
         <div className="nav-container">
           <div className="nav-logo">
             <span className="logo-bracket">{'<'}</span>
@@ -51,8 +61,8 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
           </div>
 
           <ul className="nav-links">
-            {['home', 'about', 'skills', 'projects', 'contact'].map((section) => (
-              <li key={section}>
+            {['home', 'about', 'skills', 'projects', 'contact'].map((section, index) => (
+              <li key={section} style={{ animationDelay: `${index * 0.1}s` }}>
                 <button
                   onClick={() => scrollToSection(section)}
                   className={`nav-link ${activeSection === section ? 'active' : ''}`}
@@ -64,7 +74,6 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
             ))}
           </ul>
 
-          {/* Mobile menu toggle */}
           <button className="mobile-menu-toggle">
             <span></span>
             <span></span>
@@ -86,24 +95,24 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
         {/* Hero Content Overlay */}
         <div className="hero-content">
           <div className="hero-text">
-            <div className="glitch-wrapper">
+            <div className="glitch-wrapper slide-in-up" style={{ animationDelay: '0.2s' }}>
               <h1 className="hero-title glitch" data-text="Webdesign">
                 Webdesign
               </h1>
             </div>
-            <div className="glitch-wrapper">
+            <div className="glitch-wrapper slide-in-up" style={{ animationDelay: '0.4s' }}>
               <h2 className="hero-subtitle glitch" data-text="DEVELOPER">
                 DEVELOPER
               </h2>
             </div>
-            <p className="hero-description">
+            <p className="hero-description slide-in-up" style={{ animationDelay: '0.6s' }}>
               <span className="terminal-prompt">{'>'}</span> Full-Stack Developer
               <br />
               <span className="terminal-prompt">{'>'}</span> 3D Graphics Enthusiast
               <br />
               <span className="terminal-prompt">{'>'}</span> Cyberpunk Aesthetics Lover
             </p>
-            <div className="hero-buttons">
+            <div className="hero-buttons slide-in-up" style={{ animationDelay: '0.8s' }}>
               <button className="cyber-button primary" onClick={() => scrollToSection('projects')}>
                 <span className="button-text">View Projects</span>
                 <span className="button-icon">→</span>
@@ -117,7 +126,7 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
         </div>
 
         {/* Effects Control Panel */}
-        <div className="effects-panel">
+        <div className="effects-panel fade-in" style={{ animationDelay: '1s' }}>
           <h3 className="panel-title">
             <span className="panel-icon">⚙</span> FX Control
           </h3>
@@ -150,7 +159,11 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
         </div>
 
         {/* Scroll Indicator */}
-        <div className="scroll-indicator" onClick={() => scrollToSection('about')}>
+        <div
+          className="scroll-indicator fade-in"
+          onClick={() => scrollToSection('about')}
+          style={{ animationDelay: '1.2s' }}
+        >
           <div className="mouse">
             <div className="wheel"></div>
           </div>
@@ -211,8 +224,8 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
                 <div className="frame-corner bl"></div>
                 <div className="frame-corner br"></div>
                 <div className="image-placeholder">
-                  <div className="placeholder-text">
-                    <img src="/czyzzz2.png" alt="Profile" className="profile-image" />
+                  <div className="profile-img">
+                    <img src="czyzzz2.png" alt="Profile" />
                   </div>
                 </div>
               </div>

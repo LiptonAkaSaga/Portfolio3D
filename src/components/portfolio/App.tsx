@@ -54,9 +54,9 @@ const App: React.FC = () => {
   };
 
   const handleVideoComplete = () => {
-    setShowVideo(false);
     // Przekierowanie do nowej strony portfolio
-    navigate('/new-portfolio');
+    navigate('/cyberpunk-intro');
+    setShowVideo(false);
   };
 
   // Funkcja do testowania - można usunąć później
