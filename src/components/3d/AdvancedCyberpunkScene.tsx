@@ -119,7 +119,10 @@ const HolographicRings: React.FC = () => {
 };
 
 // Scene Content
-const SceneContent: React.FC<{ modelPath: string }> = ({ modelPath }) => {
+const SceneContent: React.FC<{ modelPath: string; enableHolographicRings: boolean }> = ({
+  modelPath,
+  enableHolographicRings,
+}) => {
   return (
     <>
       {/* Cyberpunk Lighting */}
@@ -151,7 +154,7 @@ const SceneContent: React.FC<{ modelPath: string }> = ({ modelPath }) => {
       {/* Additional Visual Elements */}
       <FloatingParticles />
       <GridFloor />
-      <HolographicRings />
+      {enableHolographicRings && <HolographicRings />}
 
       {/* Environment */}
       <Environment preset="city" />
@@ -164,6 +167,7 @@ interface AdvancedCyberpunkSceneProps {
   enableAscii?: boolean;
   enableBloom?: boolean;
   enableParticles?: boolean;
+  enableHolographicRings?: boolean;
   modelPath?: string;
   backgroundColor?: string;
 }
@@ -171,6 +175,7 @@ interface AdvancedCyberpunkSceneProps {
 const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
   enableAscii = true,
   enableBloom = true,
+  enableHolographicRings = true,
   modelPath = '/models/head.glb',
   backgroundColor = '#000000',
 }) => {
@@ -180,7 +185,7 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
       <Canvas gl={{ antialias: true, alpha: false }} style={{ background: backgroundColor }}>
         <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={35} />
 
-        <SceneContent modelPath={modelPath} />
+        <SceneContent modelPath={modelPath} enableHolographicRings={enableHolographicRings} />
 
         {/* Post-processing */}
         <EffectComposer>

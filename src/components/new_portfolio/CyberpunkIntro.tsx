@@ -16,14 +16,14 @@ const CyberpunkIntro: React.FC = () => {
     '> ENCRYPTION PROTOCOL ACTIVE',
     '> ACCESS GRANTED',
     '',
-    '> WELCOME TO THE MATRIX',
+    '> HELLO, I AM CZYZ',
   ];
 
   useEffect(() => {
     const timers = [
       setTimeout(() => setStage(1), 500),
       setTimeout(() => setShowSkip(true), 2000),
-      setTimeout(() => startTransition(), 7000),
+      setTimeout(() => startTransition(), 5000),
     ];
 
     return () => timers.forEach((timer) => clearTimeout(timer));

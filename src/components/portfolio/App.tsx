@@ -8,9 +8,9 @@ import Pricing from './Pricing';
 import ContactMe from './ContactMe';
 import Footer from './Footer';
 import backgroundFiller from './images/fillerss.svg';
-import GlitchWrapper from './GlitchWrapper';
-import TVTurnOffEffect from '../TVTurnOffEffect';
-import VideoPlayer from '../Videoplayer';
+import GlitchWrapper from './glitches/GlitchWrapper';
+import TVTurnOffEffect from './glitches/TVTurnOffEffect';
+import VideoPlayer from './glitches/Videoplayer';
 import './css/Style.css';
 
 const App: React.FC = () => {
