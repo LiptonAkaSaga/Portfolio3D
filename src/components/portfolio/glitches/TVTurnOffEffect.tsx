@@ -107,28 +107,42 @@ const TVTurnOffEffect: React.FC<Props> = ({ onComplete, duration = 1.5 }) => {
     if (GlitchConfig.tvEffect.enableSound) {
       try {
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
 
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        // Sprawdź czy AudioContext wymaga resume (user gesture)
+        if (audioContext.state === 'suspended') {
+          // Próbuj resume, ale nie czekaj na to
+          audioContext.resume().catch(() => {
+            // Ignoruj - dźwięk nie zadziała bez user gesture
+            console.log('AudioContext requires user gesture - sound disabled');
+          });
+        }
 
-        oscillator.frequency.setValueAtTime(
-          GlitchConfig.tvEffect.soundStartFreq,
-          audioContext.currentTime
-        );
-        oscillator.frequency.exponentialRampToValueAtTime(
-          GlitchConfig.tvEffect.soundEndFreq,
-          audioContext.currentTime + duration * 0.6
-        );
+        // Tylko jeśli context jest running, odtwórz dźwięk
+        if (audioContext.state === 'running') {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
 
-        gainNode.gain.setValueAtTime(GlitchConfig.tvEffect.soundVolume, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
 
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + duration);
+          oscillator.frequency.setValueAtTime(
+            GlitchConfig.tvEffect.soundStartFreq,
+            audioContext.currentTime
+          );
+          oscillator.frequency.exponentialRampToValueAtTime(
+            GlitchConfig.tvEffect.soundEndFreq,
+            audioContext.currentTime + duration * 0.6
+          );
+
+          gainNode.gain.setValueAtTime(GlitchConfig.tvEffect.soundVolume, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+
+          oscillator.start();
+          oscillator.stop(audioContext.currentTime + duration);
+        }
       } catch (error) {
-        console.warn('Could not create audio context:', error);
+        // Całkowicie ignoruj błędy audio - nie wpływają na wizualny efekt
+        // console.warn('Could not create audio context:', error);
       }
     }
   }, [duration, onComplete]);

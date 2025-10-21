@@ -2,7 +2,7 @@ import React from 'react';
 import lineImage from './images/line.svg';
 import portfolioImage from './images/Projects/portfolio middle.svg';
 import lamboImage from './images/Projects/lambooo 1 middle.svg';
-import kitchenImage from './images/Projects/Kuchennarewolucja (2) middle.svg';
+import kitchenImage from './images/Projects/Kuchennarewolucja (2) middle.png';
 
 const Projects: React.FC = () => (
   <section id="projects">

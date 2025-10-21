@@ -30,7 +30,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
         enableAscii={showAscii}
         enableBloom={showBloom}
         enableHolographicRings={showHolographicRings}
-        modelPath="/models/head.glb"
+        modelPath="/models/head2.glb"
         backgroundColor="#0a0a0a"
       />
 

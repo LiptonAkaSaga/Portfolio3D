@@ -1,6 +1,6 @@
 import React from 'react';
 import lineImage from './images/line.svg';
-import aboutMeImage from './images/About-me.svg';
+import aboutMeImage from './images/About-me.png';
 
 const AboutMe: React.FC = () => (
   <section id="about-me">

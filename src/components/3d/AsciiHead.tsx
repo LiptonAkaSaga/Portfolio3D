@@ -13,7 +13,7 @@ interface AsciiHeadProps {
 }
 
 const AsciiHead: React.FC<AsciiHeadProps> = ({
-  modelPath = '/models/head.glb',
+  modelPath = '/models/head2.glb',
   rotationSpeed = 0.05, // Teraz to jest prędkość lerp, nie prędkość rotacji
   scale = 1,
   position = [0, 0, 0],
@@ -81,6 +81,6 @@ const AsciiHead: React.FC<AsciiHeadProps> = ({
 };
 
 // Preload model
-useGLTF.preload('/models/head.glb');
+useGLTF.preload('/models/head2.glb');
 
 export default AsciiHead;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGLTF } from '@react-three/drei';
 import Navbar from './Navbar';
 import Home from './Home';
 import Projects from './Projects';
@@ -21,11 +22,56 @@ const App: React.FC = () => {
 
   console.log('Background filler path:', backgroundFiller);
 
+  // Preload assets in the background - video AND 3D models
   useEffect(() => {
-    const stage1 = setTimeout(() => setGlitchStage(1), 2500); // shuffle text
-    const stage2 = setTimeout(() => setGlitchStage(2), 8000); // image glitch
+    console.log('🚀 Starting asset preloading...');
+
+    // 1. Preload video first (highest priority - będzie pokazane jako pierwsze)
+    const preloadVideo = () => {
+      const video = document.createElement('video');
+      video.preload = 'auto';
+      video.src = '/terminal.mp4';
+      video.muted = true;
+
+      video.addEventListener('progress', () => {
+        if (video.buffered.length > 0 && video.duration > 0) {
+          const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+          const percent = Math.round((bufferedEnd / video.duration) * 100);
+          console.log(`📹 Video preloading: ${percent}%`);
+        }
+      });
+
+      video.addEventListener('canplaythrough', () => {
+        console.log('✅ Video fully preloaded and cached!');
+      });
+
+      video.addEventListener('error', (e) => {
+        console.warn('⚠ Video preload error:', e);
+      });
+
+      video.load();
+    };
+
+    // 2. Preload 3D model (lower priority)
+    const preloadModel = () => {
+      try {
+        useGLTF.preload('/models/head2.glb');
+        console.log('✅ 3D Model preload initiated: /models/head2.glb');
+      } catch (error) {
+        console.warn('⚠ Error preloading model:', error);
+      }
+    };
+
+    // Start preloading video immediately
+    preloadVideo();
+
+    // Start preloading model after small delay (prioritize video)
+    setTimeout(preloadModel, 500);
+  }, []);
+
+  useEffect(() => {
+    const stage2 = setTimeout(() => setGlitchStage(2), 6000); // image glitch
     return () => {
-      clearTimeout(stage1);
       clearTimeout(stage2);
     };
   }, []);
@@ -59,11 +105,6 @@ const App: React.FC = () => {
     setShowVideo(false);
   };
 
-  // Funkcja do testowania - można usunąć później
-  const testVideoTransition = () => {
-    setShowVideo(true);
-  };
-
   const content = (
     <>
       <img
@@ -94,29 +135,8 @@ const App: React.FC = () => {
         zIndex: 1,
       }}
     >
-      {/* Przycisk testowy - można usunąć po testach */}
-      {!showVideo && !showTVEffect && (
-        <button
-          onClick={testVideoTransition}
-          style={{
-            position: 'fixed',
-            top: '20px',
-            right: '20px',
-            zIndex: 10000,
-            padding: '10px 20px',
-            backgroundColor: '#3a29f5',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            cursor: 'pointer',
-          }}
-        >
-          🎬 Test Video
-        </button>
-      )}
-
       {showVideo && (
-        <VideoPlayer videoSrc="terminal.mp4" onEnded={handleVideoComplete} autoPlay={true} />
+        <VideoPlayer videoSrc="/terminal.mp4" onEnded={handleVideoComplete} autoPlay={true} />
       )}
 
       {showTVEffect && <TVTurnOffEffect onComplete={handleTVEffectComplete} duration={1.5} />}

@@ -18,13 +18,24 @@ const VideoPlayer: React.FC<Props> = ({ videoSrc, onEnded, autoPlay = true }) =>
     const video = videoRef.current;
     if (!video) return;
 
-    const handleCanPlay = () => {
-      console.log('Video can play');
-      if (autoPlay) {
-        video.play().catch((error) => {
-          console.warn('Autoplay prevented, user interaction required:', error);
-          setNeedsUserGesture(true);
-        });
+    let hasStartedPlaying = false;
+
+    const handleCanPlayThrough = () => {
+      console.log('✅ Video can play through - enough data buffered');
+
+      if (autoPlay && !hasStartedPlaying) {
+        hasStartedPlaying = true;
+        // Upewnij się że video jest muted dla autoplay
+        video.muted = true;
+
+        // Czekamy 100ms dla pewności że bufor jest gotowy
+        setTimeout(() => {
+          video.play().catch((error) => {
+            console.warn('Autoplay prevented, user interaction required:', error);
+            setNeedsUserGesture(true);
+            hasStartedPlaying = false;
+          });
+        }, 100);
       }
     };
 
@@ -37,45 +48,86 @@ const VideoPlayer: React.FC<Props> = ({ videoSrc, onEnded, autoPlay = true }) =>
       console.log('Video loading started');
     };
 
-    // Wymuś fullscreen na urządzeniach mobilnych
-    const handlePlay = () => {
-      if (video && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        try {
-          // Próba włączenia fullscreen na mobilnych
-          if (video.requestFullscreen) {
-            video.requestFullscreen().catch(() => {
-              // Ignore fullscreen errors on mobile
+    const handleStalled = () => {
+      console.warn('Video stalled');
+      // Nie próbuj reload - to może powodować loop
+    };
+
+    const handleWaiting = () => {
+      console.log('⏳ Video buffering...');
+    };
+
+    const handlePlaying = () => {
+      console.log('▶️ Video is playing');
+      hasStartedPlaying = true;
+    };
+
+    const handlePause = () => {
+      console.log('Video paused unexpectedly');
+      // Nie próbuj auto-resume - to może powodować konflikty z buffering
+    };
+
+    const handleSuspend = () => {
+      console.log('Video loading suspended by browser');
+    };
+
+    const handleProgress = () => {
+      if (video.buffered.length > 0) {
+        const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+        const duration = video.duration;
+        if (duration > 0) {
+          const percent = Math.round((bufferedEnd / duration) * 100);
+          console.log(`📊 Video buffered: ${percent}%`);
+
+          // Jeśli mamy przynajmniej 30% bufora i video nie gra, spróbuj odtworzyć
+          if (percent >= 30 && video.paused && autoPlay && !hasStartedPlaying) {
+            console.log('🎬 Enough buffer - starting playback');
+            hasStartedPlaying = true;
+            video.muted = true;
+            video.play().catch((err) => {
+              console.warn('Could not start playback:', err);
+              hasStartedPlaying = false;
             });
-          } else if ((video as any).webkitRequestFullscreen) {
-            (video as any).webkitRequestFullscreen();
           }
-        } catch (err) {
-          // Ignore fullscreen errors
         }
       }
     };
 
-    video.addEventListener('canplay', handleCanPlay);
-    video.addEventListener('error', handleError);
-    video.addEventListener('loadstart', handleLoadStart);
-    video.addEventListener('play', handlePlay);
-
     const handleEnded = () => {
+      console.log('Video ended');
       if (onEnded) {
         onEnded();
       }
     };
 
+    // Używamy canplaythrough zamiast canplay - czeka na wystarczająco danych
+    video.addEventListener('canplaythrough', handleCanPlayThrough);
+    video.addEventListener('error', handleError);
+    video.addEventListener('loadstart', handleLoadStart);
+    video.addEventListener('stalled', handleStalled);
+    video.addEventListener('waiting', handleWaiting);
+    video.addEventListener('playing', handlePlaying);
+    video.addEventListener('pause', handlePause);
+    video.addEventListener('suspend', handleSuspend);
+    video.addEventListener('progress', handleProgress);
     video.addEventListener('ended', handleEnded);
 
+    // Force load
+    video.load();
+
     return () => {
-      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('canplaythrough', handleCanPlayThrough);
       video.removeEventListener('error', handleError);
       video.removeEventListener('loadstart', handleLoadStart);
-      video.removeEventListener('play', handlePlay);
+      video.removeEventListener('stalled', handleStalled);
+      video.removeEventListener('waiting', handleWaiting);
+      video.removeEventListener('playing', handlePlaying);
+      video.removeEventListener('pause', handlePause);
+      video.removeEventListener('suspend', handleSuspend);
+      video.removeEventListener('progress', handleProgress);
       video.removeEventListener('ended', handleEnded);
     };
-  }, [autoPlay, onEnded]);
+  }, [autoPlay, onEnded, needsUserGesture]);
 
   // Zarządzanie klasą body dla zapobiegania scrollowaniu
   useEffect(() => {
@@ -137,13 +189,9 @@ const VideoPlayer: React.FC<Props> = ({ videoSrc, onEnded, autoPlay = true }) =>
         controls={GlitchConfig.video.showControls}
         loop={GlitchConfig.video.loop}
         playsInline // Bardzo ważne dla iOS - zapobiega fullscreen
-        webkit-playsinline="true" // Stary iOS
-        muted={autoPlay} // Konieczne dla autoplay na mobilnych
-        autoPlay={autoPlay}
-        preload="auto"
+        muted // ZAWSZE muted dla autoplay
+        preload="auto" // Ładuj cały plik
         crossOrigin="anonymous"
-        // Dodatkowe atrybuty dla mobilnych
-        x-webkit-airplay="allow"
         // Wyłączenie picture-in-picture na mobilnych
         disablePictureInPicture
       >
@@ -152,6 +200,7 @@ const VideoPlayer: React.FC<Props> = ({ videoSrc, onEnded, autoPlay = true }) =>
         <source src={videoSrc} type="video/webm" />
         Your browser does not support the video tag.
       </video>
+
       {needsUserGesture && (
         <div
           onClick={async () => {

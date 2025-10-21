@@ -176,7 +176,7 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
   enableAscii = true,
   enableBloom = true,
   enableHolographicRings = true,
-  modelPath = '/models/head.glb',
+  modelPath = '/models/head2.glb',
   backgroundColor = '#000000',
 }) => {
   return (

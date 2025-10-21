@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGLTF } from '@react-three/drei';
 import './CyberpunkIntro.css';
 
 const CyberpunkIntro: React.FC = () => {
@@ -18,6 +19,19 @@ const CyberpunkIntro: React.FC = () => {
     '',
     '> HELLO, I AM CZYZ',
   ];
+
+  // Preload 3D model for the next page (last chance before heavy 3D page)
+  useEffect(() => {
+    console.log('🔄 CyberpunkIntro: Preloading 3D assets for next page...');
+
+    // Preload 3D model - to jest ostatni moment przed CyberpunkPortfolioAdvanced
+    try {
+      useGLTF.preload('/models/head2.glb');
+      console.log('✅ CyberpunkIntro: 3D Model preload initiated');
+    } catch (error) {
+      console.warn('⚠ CyberpunkIntro: Error preloading 3D model:', error);
+    }
+  }, []);
 
   useEffect(() => {
     const timers = [
