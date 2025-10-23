@@ -4,7 +4,7 @@
  * Inspirowane artykułem: https://jmswrnr.com/blog/creating-my-websites-3d-header
  */
 
-import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo } from 'react';
 import { Effect } from 'postprocessing';
 import { Uniform, CanvasTexture, LinearFilter } from 'three';
 
@@ -110,7 +110,7 @@ class TextureAsciiEffectImpl extends Effect {
     const asciiTexture = createAsciiTexture();
 
     super('TextureAsciiEffect', textureAsciiShader, {
-      uniforms: new Map([
+      uniforms: new Map<string, any>([
         ['resolution', new Uniform([window.innerWidth, window.innerHeight])],
         ['cellSize', new Uniform(cellSize)],
         ['brightness', new Uniform(brightness)],

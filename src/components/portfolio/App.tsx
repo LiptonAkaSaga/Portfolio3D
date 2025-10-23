@@ -19,6 +19,7 @@ const App: React.FC = () => {
   const [glitchStage, setGlitchStage] = useState(0);
   const [showTVEffect, setShowTVEffect] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
+  const [preloadedVideo, setPreloadedVideo] = useState<HTMLVideoElement | undefined>(undefined);
 
   console.log('Background filler path:', backgroundFiller);
 
@@ -27,29 +28,57 @@ const App: React.FC = () => {
     console.log('🚀 Starting asset preloading...');
 
     // 1. Preload video first (highest priority - będzie pokazane jako pierwsze)
-    const preloadVideo = () => {
-      const video = document.createElement('video');
-      video.preload = 'auto';
-      video.src = '/terminal.mp4';
-      video.muted = true;
+    const preloadVideo = async () => {
+      try {
+        console.log('📹 Starting video fetch...');
 
-      video.addEventListener('progress', () => {
-        if (video.buffered.length > 0 && video.duration > 0) {
-          const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-          const percent = Math.round((bufferedEnd / video.duration) * 100);
-          console.log(`📹 Video preloading: ${percent}%`);
-        }
-      });
+        // Pobierz wideo jako response
+        const response = await fetch('/terminal.mp4');
+        const blob = await response.blob();
+        console.log('✅ Video blob created, size:', blob.size);
 
-      video.addEventListener('canplaythrough', () => {
-        console.log('✅ Video fully preloaded and cached!');
-      });
+        // Stwórz Blob URL
+        const blobUrl = URL.createObjectURL(blob);
+        console.log('🔗 Blob URL created:', blobUrl);
 
-      video.addEventListener('error', (e) => {
-        console.warn('⚠ Video preload error:', e);
-      });
+        // Stwórz video element z Blob URL
+        const video = document.createElement('video');
+        video.preload = 'auto';
+        video.src = blobUrl;
+        video.muted = true;
 
-      video.load();
+        video.addEventListener('canplaythrough', () => {
+          console.log('✅ Video with Blob URL can play through!');
+          setPreloadedVideo(video);
+        });
+
+        video.addEventListener('error', (e) => {
+          console.warn('⚠ Video with Blob URL error:', e);
+          URL.revokeObjectURL(blobUrl); // Clean up on error
+        });
+
+        video.load();
+
+      } catch (error) {
+        console.warn('⚠ Failed to preload video with Blob URL:', error);
+
+        // Fallback do standardowego src
+        const video = document.createElement('video');
+        video.preload = 'auto';
+        video.src = '/terminal.mp4';
+        video.muted = true;
+
+        video.addEventListener('canplaythrough', () => {
+          console.log('✅ Fallback video preloaded!');
+          setPreloadedVideo(video);
+        });
+
+        video.addEventListener('error', (e) => {
+          console.warn('⚠ Fallback video error:', e);
+        });
+
+        video.load();
+      }
     };
 
     // 2. Preload 3D model (lower priority)
@@ -136,7 +165,7 @@ const App: React.FC = () => {
       }}
     >
       {showVideo && (
-        <VideoPlayer videoSrc="/terminal.mp4" onEnded={handleVideoComplete} autoPlay={true} />
+        <VideoPlayer preloadedVideo={preloadedVideo} onEnded={handleVideoComplete} autoPlay={true} />
       )}
 
       {showTVEffect && <TVTurnOffEffect onComplete={handleTVEffectComplete} duration={1.5} />}

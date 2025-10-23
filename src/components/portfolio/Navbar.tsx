@@ -1,6 +1,5 @@
 import React from 'react';
 import signatureLogo from './images/signature Logo.png';
-import lineImage from './images/line.svg';
 
 const Navbar: React.FC = () => (
   <nav className="navbar fixed-top py-2 navbar-expand-lg">

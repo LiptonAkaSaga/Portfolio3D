@@ -1,4 +1,4 @@
-import React, { Suspense, useRef, useMemo } from 'react';
+import React, { Suspense, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { PerspectiveCamera, Environment } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
@@ -7,10 +7,11 @@ import * as THREE from 'three';
 import AsciiHead from './AsciiHead';
 import { TextureAsciiEffect } from './TextureAsciiEffect';
 
-// Floating Particles
+// Performance-optimized Floating Particles
 const FloatingParticles: React.FC = () => {
   const particlesRef = useRef<THREE.Points>(null);
-  const PARTICLE_COUNT = 250;
+  const PARTICLE_COUNT = 100; // Zmniejszono z 250 do 100
+  const lastUpdateRef = useRef(0);
 
   const [positions, speeds] = React.useMemo(() => {
     const pos = new Float32Array(PARTICLE_COUNT * 3);
@@ -29,6 +30,11 @@ const FloatingParticles: React.FC = () => {
   useFrame((state, delta) => {
     if (!particlesRef.current) return;
 
+    // Ogranicz aktualizacje do 30 FPS dla particli
+    const now = state.clock.elapsedTime * 1000;
+    if (now - lastUpdateRef.current < 33) return; // ~30 FPS
+    lastUpdateRef.current = now;
+
     const posArray = particlesRef.current.geometry.attributes.position.array as Float32Array;
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
@@ -42,8 +48,8 @@ const FloatingParticles: React.FC = () => {
         posArray[i * 3 + 2] = (Math.random() - 0.5) * 10;
       }
 
-      // Slight horizontal drift
-      posArray[i * 3] += Math.sin(state.clock.elapsedTime + i) * 0.001;
+      // Zmniejszony horizontal drift
+      posArray[i * 3] += Math.sin(state.clock.elapsedTime + i) * 0.0005;
     }
 
     particlesRef.current.geometry.attributes.position.needsUpdate = true;
@@ -57,6 +63,7 @@ const FloatingParticles: React.FC = () => {
           count={PARTICLE_COUNT}
           array={positions}
           itemSize={3}
+          args={[positions, 3]}
         />
       </bufferGeometry>
       <pointsMaterial
@@ -125,19 +132,12 @@ const SceneContent: React.FC<{ modelPath: string; enableHolographicRings: boolea
 }) => {
   return (
     <>
-      {/* Cyberpunk Lighting */}
-      <ambientLight intensity={0.2} />
-      <pointLight position={[-5, 5, -5]} color="#00aaff" intensity={4} distance={20} />
-      <pointLight position={[-5, 0, 5]} color="#00aaff" intensity={1} distance={20} />
-      <pointLight position={[5, 0, 0]} color="#ff00ff" intensity={6} distance={30} />
-      <spotLight
-        position={[0, 8, 0]}
-        angle={0.3}
-        penumbra={1}
-        intensity={3}
-        color="#00ffff"
-        castShadow
-      />
+      {/* Zoptymalizowane oświetlenie - mniej świateł i mniejsza intensywność */}
+      <ambientLight intensity={0.15} />
+      <pointLight position={[-3, 3, -3]} color="#00aaff" intensity={2} distance={15} />
+      <pointLight position={[3, 0, 0]} color="#ff00ff" intensity={3} distance={20} />
+
+      {/* Usunięto spotLight który był najbardziej kosztowny */}
 
       {/* Main Model - z ograniczoną rotacją */}
       <Suspense fallback={null}>
@@ -156,8 +156,8 @@ const SceneContent: React.FC<{ modelPath: string; enableHolographicRings: boolea
       <GridFloor />
       {enableHolographicRings && <HolographicRings />}
 
-      {/* Environment */}
-      <Environment preset="city" />
+      {/* Environment - mniejsza intensywność */}
+      <Environment preset="city" environmentIntensity={0.5} />
     </>
   );
 };
@@ -172,6 +172,7 @@ interface AdvancedCyberpunkSceneProps {
   backgroundColor?: string;
 }
 
+
 const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
   enableAscii = true,
   enableBloom = true,
@@ -179,32 +180,156 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
   modelPath = '/models/head2.glb',
   backgroundColor = '#000000',
 }) => {
+  const [isLowPerformance, setIsLowPerformance] = useState(false);
+  const [isDebugMode, setIsDebugMode] = useState(false);
+
+  // Wykryj urządzenia o niższej wydajności
+  React.useEffect(() => {
+    const checkPerformance = () => {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+
+      if (!gl) {
+        setIsLowPerformance(true);
+        return;
+      }
+
+      const debugInfo = (gl as WebGLRenderingContext).getExtension('WEBGL_debug_renderer_info');
+      if (debugInfo) {
+        const renderer = (gl as WebGLRenderingContext).getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        // Wykryj integracje karty graficzne (słabsze urządzenia)
+        if (renderer.includes('Intel') && !renderer.includes('Iris')) {
+          setIsLowPerformance(true);
+        }
+      }
+
+      // Sprawdź liczbę rdzeni CPU
+      if (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) {
+        setIsLowPerformance(true);
+      }
+    };
+
+    checkPerformance();
+
+    // Debug mode - naciśnij 'P' 3x aby przełączyć
+    const pressCount = { current: 0 };
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'p' || e.key === 'P') {
+        pressCount.current++;
+        if (pressCount.current >= 3) {
+          setIsDebugMode(prev => !prev);
+          pressCount.current = 0;
+          console.log('🎮 Debug mode:', !isDebugMode ? 'enabled' : 'disabled');
+        }
+      }
+      // Reset po 1 sekundzie
+      setTimeout(() => { pressCount.current = 0; }, 1000);
+    };
+
+    window.addEventListener('keypress', handleKeyPress);
+    return () => window.removeEventListener('keypress', handleKeyPress);
+  }, []);
+
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
-      {/* 3D Canvas */}
-      <Canvas gl={{ antialias: true, alpha: false }} style={{ background: backgroundColor }}>
+      {/* Debug Panel */}
+      {isDebugMode && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 10,
+            right: 10,
+            background: 'rgba(0, 0, 0, 0.9)',
+            color: '#00ff00',
+            padding: '15px',
+            borderRadius: '8px',
+            fontFamily: 'monospace',
+            fontSize: '12px',
+            zIndex: 1000,
+            border: '1px solid #00ff00',
+            minWidth: '200px'
+          }}
+        >
+          <div style={{ marginBottom: '10px', fontSize: '14px', fontWeight: 'bold' }}>
+            🎮 DEBUG MODE
+          </div>
+          <div style={{ marginBottom: '8px' }}>
+            CPU Cores: {navigator.hardwareConcurrency || 'unknown'}
+          </div>
+          <div style={{ marginBottom: '8px' }}>
+            GPU: {(navigator as any).gpu?.vendor || 'unknown'}
+          </div>
+          <div style={{ marginBottom: '8px' }}>
+            Device: {isLowPerformance ? '🐌 LOW PERFORMANCE' : '🚀 HIGH PERFORMANCE'}
+          </div>
+          <div style={{ marginBottom: '8px' }}>
+            DPI: {isLowPerformance ? 1 : window.devicePixelRatio}
+          </div>
+          <div style={{ marginBottom: '8px' }}>
+            Antialias: {!isLowPerformance ? '✅ ON' : '❌ OFF'}
+          </div>
+          <div style={{ marginBottom: '15px' }}>
+            Holographic Rings: {(!isLowPerformance && enableHolographicRings) ? '✅ ON' : '❌ OFF'}
+          </div>
+          <div style={{ borderTop: '1px solid #00ff00', paddingTop: '10px', marginBottom: '10px' }}>
+            <button
+              onClick={() => setIsLowPerformance(!isLowPerformance)}
+              style={{
+                background: isLowPerformance ? '#ff0000' : '#00ff00',
+                color: '#000',
+                border: 'none',
+                padding: '5px 10px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                width: '100%',
+                fontWeight: 'bold'
+              }}
+            >
+              {isLowPerformance ? 'FORCE HIGH PERF' : 'FORCE LOW PERF'}
+            </button>
+          </div>
+          <div style={{ fontSize: '10px', opacity: 0.7 }}>
+            Press 'P' 3x to close
+          </div>
+        </div>
+      )}
+
+      {/* 3D Canvas z optymalizacjami */}
+      <Canvas
+        gl={{
+          antialias: !isLowPerformance, // Wyłącz antialiasing na słabszych urządzeniach
+          alpha: false,
+          powerPreference: 'high-performance'
+        }}
+        style={{ background: backgroundColor }}
+        dpr={isLowPerformance ? 1 : Math.min(window.devicePixelRatio, 2)} // Ogranicz DPI na słabszych urządzeniach
+        performance={{ min: 0.5 }} // Ustaw minimalną jakość
+      >
         <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={35} />
 
-        <SceneContent modelPath={modelPath} enableHolographicRings={enableHolographicRings} />
+        <SceneContent modelPath={modelPath} enableHolographicRings={enableHolographicRings && !isLowPerformance} />
 
-        {/* Post-processing */}
+        {/* Post-processing z adaptacyjną jakością */}
         <EffectComposer>
-          {enableAscii && (
+          {enableAscii ? (
             <TextureAsciiEffect
-              cellSize={[8, 12]}
-              brightness={2.9}
+              cellSize={isLowPerformance ? [12, 16] : [8, 12]}
+              brightness={isLowPerformance ? 2.5 : 2.9}
               color1={[0.0, 0.4, 0.6]}
               color2={[0.0, 0.8, 1.0]}
             />
+          ) : (
+            <></>
           )}
-
-          {enableBloom && (
+          {enableBloom ? (
             <Bloom
-              intensity={0.6}
+              intensity={isLowPerformance ? 0.3 : 0.6}
               luminanceThreshold={0.2}
               luminanceSmoothing={0.9}
               blendFunction={BlendFunction.ADD}
             />
+          ) : (
+            <></>
           )}
         </EffectComposer>
       </Canvas>

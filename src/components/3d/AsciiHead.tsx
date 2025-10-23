@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -21,57 +21,63 @@ const AsciiHead: React.FC<AsciiHeadProps> = ({
   maxRotationY = Math.PI / 4, // 45 stopni
 }) => {
   const groupRef = useRef<THREE.Group>(null);
+  const frameSkipRef = useRef(0);
 
   // Ładowanie modelu GLB
   const { scene } = useGLTF(modelPath);
 
-  // Klonowanie sceny aby uniknąć problemów z re-renderem
-  const clonedScene = scene.clone();
+  // Klonowanie sceny tylko raz z useMemo
+  const clonedScene = useMemo(() => {
+    const cloned = scene.clone();
 
-  // Wychylenie na podstawie pozycji myszy - BEZ nieskończonych obrotów
-  useFrame((state) => {
-    if (groupRef.current) {
-      // Normalizujemy pozycję myszy (-1 do 1) i mnożymy przez maksymalny kąt
-      const targetRotationX = state.mouse.y * maxRotationX;
-      const targetRotationY = state.mouse.x * maxRotationY;
+    // Optymalizuj materiały tylko raz podczas klonowania
+    cloned.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.material) {
+        // Klonuj materiał tylko jeśli to konieczne
+        child.material = child.material.clone();
 
-      // Płynne przejście do docelowej rotacji używając lerp
-      groupRef.current.rotation.x = THREE.MathUtils.lerp(
-        groupRef.current.rotation.x,
-        targetRotationX,
-        rotationSpeed
-      );
+        if (child.material instanceof THREE.MeshStandardMaterial) {
+          child.material.metalness = 0.7;
+          child.material.roughness = 0.3;
+          child.material.emissive = new THREE.Color(0x0088ff);
+          child.material.emissiveIntensity = 0.2;
 
-      groupRef.current.rotation.y = THREE.MathUtils.lerp(
-        groupRef.current.rotation.y,
-        targetRotationY,
-        rotationSpeed
-      );
-    }
-  });
-
-  // Modyfikacja materiałów dla lepszego wyglądu
-  useEffect(() => {
-    clonedScene.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        // Sprawdź czy materiał istnieje
-        if (child.material) {
-          // Klonuj materiał aby móc go modyfikować
-          child.material = child.material.clone();
-
-          // Ustaw podstawowe właściwości dla cyberpunk looku
-          if (child.material instanceof THREE.MeshStandardMaterial) {
-            child.material.metalness = 0.7;
-            child.material.roughness = 0.3;
-
-            // Dodaj subtelną emisję (poświatę)
-            child.material.emissive = new THREE.Color(0x0088ff);
-            child.material.emissiveIntensity = 0.2;
-          }
+          // Optymalizacje renderowania
+          child.material.needsUpdate = false;
+          child.material.transparent = false;
+          child.material.alphaTest = 0.01;
         }
       }
     });
-  }, [clonedScene]);
+
+    return cloned;
+  }, [scene]);
+
+  // Wychylenie na podstawie pozycji myszy - z optymalizacją FPS
+  useFrame((state) => {
+    if (!groupRef.current) return;
+
+    // Ogranicz aktualizacje do 30 FPS dla płynności
+    frameSkipRef.current++;
+    if (frameSkipRef.current % 2 !== 0) return; // Co drugą klatkę
+
+    // Normalizujemy pozycję myszy (-1 do 1) i mnożymy przez maksymalny kąt
+    const targetRotationX = state.mouse.y * maxRotationX;
+    const targetRotationY = state.mouse.x * maxRotationY;
+
+    // Płynne przejście do docelowej rotacji używając lerp
+    groupRef.current.rotation.x = THREE.MathUtils.lerp(
+      groupRef.current.rotation.x,
+      targetRotationX,
+      rotationSpeed
+    );
+
+    groupRef.current.rotation.y = THREE.MathUtils.lerp(
+      groupRef.current.rotation.y,
+      targetRotationY,
+      rotationSpeed
+    );
+  });
 
   return (
     <group position={position} ref={groupRef} scale={scale}>

@@ -3,138 +3,96 @@ import React, { useRef, useEffect, useState } from 'react';
 import { GlitchConfig } from './glitchConfig';
 
 interface Props {
-  videoSrc: string;
+  videoSrc?: string;
+  preloadedVideo?: HTMLVideoElement | undefined;
   onEnded?: () => void;
   autoPlay?: boolean;
 }
 
-const VideoPlayer: React.FC<Props> = ({ videoSrc, onEnded, autoPlay = true }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
+const VideoPlayer: React.FC<Props> = ({ videoSrc, preloadedVideo, onEnded, autoPlay = true }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
   const [needsUserGesture, setNeedsUserGesture] = useState(false);
 
-  console.log('VideoPlayer rendering with videoSrc:', videoSrc);
+  console.log('VideoPlayer rendering with preloadedVideo:', preloadedVideo ? 'YES' : 'NO', 'videoSrc:', videoSrc);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    if (!containerRef.current) return;
 
-    let hasStartedPlaying = false;
+    // Jeśli mamy preloaded video, użyj go bezpośrednio
+    if (preloadedVideo) {
+      console.log('🎬 Using preloaded video element directly!');
 
-    const handleCanPlayThrough = () => {
-      console.log('✅ Video can play through - enough data buffered');
+      // Ustaw style na preloaded video
+      Object.assign(preloadedVideo.style, {
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+      });
 
-      if (autoPlay && !hasStartedPlaying) {
-        hasStartedPlaying = true;
-        // Upewnij się że video jest muted dla autoplay
-        video.muted = true;
+      // Ustaw atrybuty na preloaded video
+      preloadedVideo.muted = true;
+      preloadedVideo.controls = GlitchConfig.video.showControls;
+      preloadedVideo.loop = GlitchConfig.video.loop;
+      preloadedVideo.playsInline = true;
+      preloadedVideo.crossOrigin = 'anonymous';
+      preloadedVideo.disablePictureInPicture = true;
 
-        // Czekamy 100ms dla pewności że bufor jest gotowy
-        setTimeout(() => {
-          video.play().catch((error) => {
-            console.warn('Autoplay prevented, user interaction required:', error);
-            setNeedsUserGesture(true);
-            hasStartedPlaying = false;
-          });
-        }, 100);
-      }
-    };
+      let hasStartedPlaying = false;
 
-    const handleError = (e: Event) => {
-      console.error('Video error:', e);
-      console.error('Video error details:', (e.target as HTMLVideoElement).error);
-    };
+      const handleCanPlayThrough = () => {
+        console.log('✅ Preloaded video can play through');
 
-    const handleLoadStart = () => {
-      console.log('Video loading started');
-    };
+        if (autoPlay && !hasStartedPlaying) {
+          hasStartedPlaying = true;
+          preloadedVideo.muted = true;
 
-    const handleStalled = () => {
-      console.warn('Video stalled');
-      // Nie próbuj reload - to może powodować loop
-    };
-
-    const handleWaiting = () => {
-      console.log('⏳ Video buffering...');
-    };
-
-    const handlePlaying = () => {
-      console.log('▶️ Video is playing');
-      hasStartedPlaying = true;
-    };
-
-    const handlePause = () => {
-      console.log('Video paused unexpectedly');
-      // Nie próbuj auto-resume - to może powodować konflikty z buffering
-    };
-
-    const handleSuspend = () => {
-      console.log('Video loading suspended by browser');
-    };
-
-    const handleProgress = () => {
-      if (video.buffered.length > 0) {
-        const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-        const duration = video.duration;
-        if (duration > 0) {
-          const percent = Math.round((bufferedEnd / duration) * 100);
-          console.log(`📊 Video buffered: ${percent}%`);
-
-          // Jeśli mamy przynajmniej 30% bufora i video nie gra, spróbuj odtworzyć
-          if (percent >= 30 && video.paused && autoPlay && !hasStartedPlaying) {
-            console.log('🎬 Enough buffer - starting playback');
-            hasStartedPlaying = true;
-            video.muted = true;
-            video.play().catch((err) => {
-              console.warn('Could not start playback:', err);
+          setTimeout(() => {
+            preloadedVideo.play().catch((error) => {
+              console.warn('Autoplay prevented for preloaded video:', error);
+              setNeedsUserGesture(true);
               hasStartedPlaying = false;
             });
-          }
+          }, 100);
         }
+      };
+
+      const handleEnded = () => {
+        console.log('Preloaded video ended');
+        if (onEnded) onEnded();
+      };
+
+      // Dodaj event listeners do preloaded video
+      preloadedVideo.addEventListener('canplaythrough', handleCanPlayThrough);
+      preloadedVideo.addEventListener('ended', handleEnded);
+      preloadedVideo.addEventListener('playing', () => console.log('▶️ Preloaded video is playing'));
+
+      // Jeśli preloaded video jest już gotowe do odtworzenia
+      if (preloadedVideo.readyState >= 4) {
+        console.log('🚀 Preloaded video has enough data!');
+        handleCanPlayThrough();
       }
-    };
 
-    const handleEnded = () => {
-      console.log('Video ended');
-      if (onEnded) {
-        onEnded();
-      }
-    };
+      // Wstaw preloaded video do kontenera (przenieś z ukrycia)
+      containerRef.current.appendChild(preloadedVideo);
 
-    // Używamy canplaythrough zamiast canplay - czeka na wystarczająco danych
-    video.addEventListener('canplaythrough', handleCanPlayThrough);
-    video.addEventListener('error', handleError);
-    video.addEventListener('loadstart', handleLoadStart);
-    video.addEventListener('stalled', handleStalled);
-    video.addEventListener('waiting', handleWaiting);
-    video.addEventListener('playing', handlePlaying);
-    video.addEventListener('pause', handlePause);
-    video.addEventListener('suspend', handleSuspend);
-    video.addEventListener('progress', handleProgress);
-    video.addEventListener('ended', handleEnded);
+      return () => {
+        preloadedVideo.removeEventListener('canplaythrough', handleCanPlayThrough);
+        preloadedVideo.removeEventListener('ended', handleEnded);
+        // Nie usuwamy z DOM - zostanie użyty ponownie
+      };
+    }
 
-    // Force load
-    video.load();
-
-    return () => {
-      video.removeEventListener('canplaythrough', handleCanPlayThrough);
-      video.removeEventListener('error', handleError);
-      video.removeEventListener('loadstart', handleLoadStart);
-      video.removeEventListener('stalled', handleStalled);
-      video.removeEventListener('waiting', handleWaiting);
-      video.removeEventListener('playing', handlePlaying);
-      video.removeEventListener('pause', handlePause);
-      video.removeEventListener('suspend', handleSuspend);
-      video.removeEventListener('progress', handleProgress);
-      video.removeEventListener('ended', handleEnded);
-    };
-  }, [autoPlay, onEnded, needsUserGesture]);
+    // Fallback dla standardowego wideo
+    return () => {};
+  }, [preloadedVideo, autoPlay, onEnded]);
 
   // Zarządzanie klasą body dla zapobiegania scrollowaniu
   useEffect(() => {
-    // Dodanie klasy do body gdy video jest aktywne
     document.body.classList.add('video-playing');
 
-    // Wymusza ukrycie interfejsu mobilnego
     const viewport = document.querySelector('meta[name=viewport]');
     const originalContent = viewport?.getAttribute('content');
 
@@ -146,10 +104,8 @@ const VideoPlayer: React.FC<Props> = ({ videoSrc, onEnded, autoPlay = true }) =>
     }
 
     return () => {
-      // Usunięcie klasy gdy komponent się unmountuje
       document.body.classList.remove('video-playing');
 
-      // Przywrócenie oryginalnego viewport
       if (viewport && originalContent) {
         viewport.setAttribute('content', originalContent);
       }
@@ -170,46 +126,61 @@ const VideoPlayer: React.FC<Props> = ({ videoSrc, onEnded, autoPlay = true }) =>
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        // Zapobieganie scrollowaniu na mobilnych
         overflow: 'hidden',
-        // Wyłączenie zoom na dotyk
         touchAction: 'none',
       }}
     >
-      <video
-        ref={videoRef}
-        style={{
-          width: '100vw',
-          height: '100vh',
-          objectFit: 'cover',
-          // Wycentrowanie wideo na wszystkich urządzeniach
-          display: 'block',
-          margin: 'auto',
-        }}
-        controls={GlitchConfig.video.showControls}
-        loop={GlitchConfig.video.loop}
-        playsInline // Bardzo ważne dla iOS - zapobiega fullscreen
-        muted // ZAWSZE muted dla autoplay
-        preload="auto" // Ładuj cały plik
-        crossOrigin="anonymous"
-        // Wyłączenie picture-in-picture na mobilnych
-        disablePictureInPicture
-      >
-        <source src={videoSrc} type="video/mp4; codecs=avc1.42E01E,mp4a.40.2" />
-        <source src={videoSrc} type="video/mp4" />
-        <source src={videoSrc} type="video/webm" />
-        Your browser does not support the video tag.
-      </video>
+      {/* Kontener na preloaded video */}
+      {preloadedVideo ? (
+        <div
+          ref={containerRef}
+          style={{
+            width: '100%',
+            height: '100%',
+            position: 'relative',
+          }}
+        />
+      ) : (
+        // Standardowy video element dla fallback
+        <video
+          ref={containerRef as any}
+          style={{
+            width: '100vw',
+            height: '100vh',
+            objectFit: 'cover',
+            display: 'block',
+            margin: 'auto',
+          }}
+          controls={GlitchConfig.video.showControls}
+          loop={GlitchConfig.video.loop}
+          playsInline
+          muted
+          preload="auto"
+          crossOrigin="anonymous"
+          disablePictureInPicture
+        >
+          {videoSrc && (
+            <>
+              <source src={videoSrc} type="video/mp4; codecs=avc1.42E01E,mp4a.40.2" />
+              <source src={videoSrc} type="video/mp4" />
+              <source src={videoSrc} type="video/webm" />
+            </>
+          )}
+          {!videoSrc && (
+            <>Your browser does not support the video tag.</>
+          )}
+        </video>
+      )}
 
       {needsUserGesture && (
         <div
           onClick={async () => {
-            const v = videoRef.current;
-            if (!v) return;
+            // Użyj preloaded video jeśli dostępne, w przeciwnym razie znajdź video w kontenerze
+            const videoToPlay = preloadedVideo || (containerRef.current?.querySelector('video') as HTMLVideoElement);
+            if (!videoToPlay) return;
             try {
-              // unmute when user explicitly interacts (optional)
-              v.muted = false;
-              await v.play();
+              videoToPlay.muted = false;
+              await videoToPlay.play();
               setNeedsUserGesture(false);
             } catch (err) {
               console.error('Play still failed after user gesture:', err);
@@ -224,7 +195,6 @@ const VideoPlayer: React.FC<Props> = ({ videoSrc, onEnded, autoPlay = true }) =>
             cursor: 'pointer',
             zIndex: 99999,
             backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            // Zapobieganie scrollowaniu
             touchAction: 'none',
           }}
           aria-label="Play video"
@@ -239,17 +209,13 @@ const VideoPlayer: React.FC<Props> = ({ videoSrc, onEnded, autoPlay = true }) =>
               fontSize: 20,
               fontWeight: 'bold',
               cursor: 'pointer',
-              // Większy przycisk na mobilnych
               minWidth: '120px',
               minHeight: '60px',
-              // Lepsze dotykanie na mobilnych
               touchAction: 'manipulation',
               userSelect: 'none',
-              // Animacja
               transition: 'all 0.2s ease',
             }}
             onTouchStart={(e) => {
-              // Zapobiega wielokrotnym dotknięciom
               e.currentTarget.style.transform = 'scale(0.95)';
             }}
             onTouchEnd={(e) => {
