@@ -7,7 +7,7 @@ const CyberFooter: React.FC = () => {
         <div className="footer-content">
           <div className="footer-logo">
             <span className="logo-bracket">{'<'}</span>
-            <span className="logo-text">CYBER</span>
+            <span className="logo-text">Czyż</span>
             <span className="logo-bracket">{'/>'}</span>
           </div>
           <p className="footer-text">
@@ -16,7 +16,7 @@ const CyberFooter: React.FC = () => {
             <span className="highlight">caffeine</span>
           </p>
           <p className="footer-copyright">
-            © {new Date().getFullYear()} Cyberpunk Portfolio. All rights reserved.
+            © {new Date().getFullYear()} Wiktor Czyż Portolio. All rights reserved.
           </p>
         </div>
       </div>

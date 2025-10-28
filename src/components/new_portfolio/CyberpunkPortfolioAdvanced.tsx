@@ -49,24 +49,8 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
     };
   }, []);
 
-  // Włącz scroll snap po załadowaniu i pierwszej animacji
-  useEffect(() => {
-    if (!isLoaded) return;
-
-    // Poczekaj na zakończenie animacji wejścia (1 sekunda)
-    const snapTimeout = setTimeout(() => {
-      if (!isMobile) {
-        document.documentElement.classList.add('snap-enabled');
-      }
-    }, 1200); // 1.2s po załadowaniu - daje czas na animacje
-
-    return () => {
-      clearTimeout(snapTimeout);
-      document.documentElement.classList.remove('snap-enabled');
-    };
-  }, [isLoaded, isMobile]);
-
-  // Enhanced scroll management with snap behavior
+  
+  // Enhanced scroll management without snap behavior
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -96,154 +80,35 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
         }
       }
 
-      // Auto-snap to nearest section after scroll ends (only on desktop)
+      // Set scrolling to false after scroll ends
       scrollTimeout = window.setTimeout(() => {
         setIsScrolling(false);
-        if (!isMobile) {
-          snapToNearestSection();
-        }
       }, 150);
-    };
-
-    const snapToNearestSection = () => {
-      // Only snap on desktop devices
-      if (isMobile) return;
-
-      const scrollPosition = window.scrollY;
-      let nearestSection = sections[0];
-      let minDistance = Infinity;
-
-      sections.forEach((sectionId) => {
-        const element = document.getElementById(sectionId);
-        if (element) {
-          const distance = Math.abs(element.offsetTop - scrollPosition);
-          if (distance < minDistance) {
-            minDistance = distance;
-            nearestSection = sectionId;
-          }
-        }
-      });
-
-      // Snap to nearest section if we're not already there
-      const nearestElement = document.getElementById(nearestSection);
-      if (nearestElement && Math.abs(nearestElement.offsetTop - scrollPosition) > 50) {
-        nearestElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
-      }
-    };
-
-    // Wheel event handler for section-by-section navigation (desktop only)
-    const handleWheel = (e: WheelEvent) => {
-      // Disable wheel navigation on mobile devices
-      if (isMobile || isScrolling) return;
-
-      e.preventDefault();
-
-      const currentIndex = sections.indexOf(activeSection);
-      let targetIndex = currentIndex;
-
-      if (e.deltaY > 0 && currentIndex < sections.length - 1) {
-        // Scroll down
-        targetIndex = currentIndex + 1;
-      } else if (e.deltaY < 0 && currentIndex > 0) {
-        // Scroll up
-        targetIndex = currentIndex - 1;
-      }
-
-      if (targetIndex !== currentIndex) {
-        scrollToSection(sections[targetIndex]);
-      }
-    };
-
-    // Keyboard navigation
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isScrolling) return;
-
-      const currentIndex = sections.indexOf(activeSection);
-      let targetIndex = currentIndex;
-
-      switch (e.key) {
-        case 'ArrowDown':
-        case 'PageDown':
-          e.preventDefault();
-          if (currentIndex < sections.length - 1) {
-            targetIndex = currentIndex + 1;
-          }
-          break;
-        case 'ArrowUp':
-        case 'PageUp':
-          e.preventDefault();
-          if (currentIndex > 0) {
-            targetIndex = currentIndex - 1;
-          }
-          break;
-        case 'Home':
-          e.preventDefault();
-          targetIndex = 0;
-          break;
-        case 'End':
-          e.preventDefault();
-          targetIndex = sections.length - 1;
-          break;
-      }
-
-      if (targetIndex !== currentIndex) {
-        scrollToSection(sections[targetIndex]);
-      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Add wheel and keyboard navigation only on desktop
-    if (!isMobile) {
-      window.addEventListener('wheel', handleWheel, { passive: false });
-      window.addEventListener('keydown', handleKeyDown);
-    }
-
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      if (!isMobile) {
-        window.removeEventListener('wheel', handleWheel);
-        window.removeEventListener('keydown', handleKeyDown);
-      }
       if (scrollTimeout) {
         clearTimeout(scrollTimeout);
       }
     };
-  }, [isLoaded, activeSection, isScrolling, isMobile]);
+  }, [isLoaded, isScrolling]);
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
       setIsScrolling(true);
 
-      // Different behavior for mobile vs desktop
-      if (isMobile) {
-        // On mobile, just scroll smoothly without snap manipulation
-        element.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
+      element.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
 
-        setTimeout(() => {
-          setIsScrolling(false);
-        }, 800);
-      } else {
-        // Desktop behavior with snap scroll manipulation
-        document.documentElement.classList.remove('snap-enabled');
-
-        element.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
-
-        setTimeout(() => {
-          document.documentElement.classList.add('snap-enabled');
-          setIsScrolling(false);
-        }, 1000);
-      }
+      setTimeout(() => {
+        setIsScrolling(false);
+      }, 800);
     }
   };
 
