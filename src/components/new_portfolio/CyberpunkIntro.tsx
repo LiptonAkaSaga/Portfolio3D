@@ -57,7 +57,7 @@ const CyberpunkIntro: React.FC = () => {
     setTransitioning(true);
 
     setTimeout(() => {
-      navigate('/cyberpunk-advanced');
+      navigate('/new');
     }, 1000);
   };
 

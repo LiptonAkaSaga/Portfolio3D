@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface Project {
   title: string;
@@ -9,6 +9,21 @@ interface Project {
 }
 
 const ProjectsSection: React.FC = () => {
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupProject, setPopupProject] = useState<string>('');
+
+  useEffect(() => {
+    if (showPopup) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showPopup]);
+
   const projects: Project[] = [
     {
       title: 'Cyberpunk styled 3D Portfolio',
@@ -56,6 +71,18 @@ const ProjectsSection: React.FC = () => {
     },
   ];
 
+  const handleProjectClick = (project: Project, e: React.MouseEvent) => {
+    if (project.status === 'Beta' || project.status === 'In Progress') {
+      e.preventDefault();
+      setPopupProject(project.title);
+      setShowPopup(true);
+    }
+  };
+
+  const closePopup = () => {
+    setShowPopup(false);
+  };
+
   return (
     <section id="projects" className="projects-section content-section">
       <div className="container">
@@ -88,13 +115,81 @@ const ProjectsSection: React.FC = () => {
                 ))}
               </div>
               <div className="project-footer">
-                <a href={project.link} className="project-link">
+                <a
+                  href={project.link}
+                  className="project-link"
+                  onClick={(e) => handleProjectClick(project, e)}
+                >
                   View Project <span className="link-arrow">→</span>
                 </a>
               </div>
             </div>
           ))}
         </div>
+
+        {/* Cyberpunk Popup */}
+        {showPopup && (
+          <div className="cyber-popup-overlay" onClick={closePopup}>
+            <div className="cyber-popup" onClick={(e) => e.stopPropagation()}>
+              <div className="popup-scanlines"></div>
+              <div className="popup-header">
+                <div className="popup-icon">⚠️</div>
+                <h3 className="popup-title">
+                  <span className="glitch" data-text="ACCESS DENIED">
+                    ACCESS DENIED
+                  </span>
+                </h3>
+              </div>
+
+              <div className="popup-body">
+                <div className="popup-message">
+                  <div className="terminal-line">
+                    <span className="terminal-prompt">&gt;</span>
+                    <span className="terminal-text">
+                      Initializing access to: <span className="highlight">{popupProject}</span>
+                    </span>
+                  </div>
+                  <div className="terminal-line">
+                    <span className="terminal-prompt">&gt;</span>
+                    <span className="terminal-text error-text">
+                      ERROR: Project not ready for public access
+                    </span>
+                  </div>
+                  <div className="terminal-line">
+                    <span className="terminal-prompt">&gt;</span>
+                    <span className="terminal-text">
+                      Status: <span className="warning-text">Under Development</span>
+                    </span>
+                  </div>
+                  <div className="terminal-line">
+                    <span className="terminal-prompt">&gt;</span>
+                    <span className="terminal-text">
+                      This project is still in development phase
+                    </span>
+                  </div>
+                  <div className="terminal-line">
+                    <span className="terminal-prompt">&gt;</span>
+                    <span className="terminal-text">Please check back later...</span>
+                  </div>
+                </div>
+
+                <div className="popup-footer">
+                  <button className="cyber-button primary" onClick={closePopup}>
+                    <span>UNDERSTOOD</span>
+                    <span className="button-icon">✓</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="popup-corners">
+                <span className="corner tl"></span>
+                <span className="corner tr"></span>
+                <span className="corner bl"></span>
+                <span className="corner br"></span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

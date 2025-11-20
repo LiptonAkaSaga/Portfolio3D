@@ -48,24 +48,36 @@ const HeroSection: React.FC<HeroSectionProps> = ({
                 DEVELOPER
               </h2>
             </div>
-            <p className="hero-description slide-in-up" style={{ animationDelay: '0.6s' }}>
+            <p
+              className="hero-description hero-description-animated"
+              style={{
+                animationDelay: '0.6s',
+                opacity: 0,
+                animation:
+                  'slideInUp 0.8s ease-out 0.6s forwards, descriptionGlow 2s linear 1.4s infinite',
+              }}
+            >
               <span className="terminal-prompt">{'>'}</span> Full-Stack Developer
               <br />
               <span className="terminal-prompt">{'>'}</span> 3D Graphics Enthusiast
               <br />
-              <span className="terminal-prompt">{'>'}</span> Cyberpunk Aesthetics Lover
+              <span className="terminal-prompt">{'>'}</span> Open To Work
             </p>
           </div>
-          <div className="hero-buttons slide-in-up" style={{ animationDelay: '0.8s' }}>
-            <button className="cyber-button primary" onClick={() => onSectionClick('projects')}>
-              <span className="button-text">View Projects</span>
-              <span className="button-icon">→</span>
-            </button>
-            <button className="cyber-button secondary" onClick={() => onSectionClick('contact')}>
-              <span className="button-text">Contact Me</span>
-              <span className="button-icon">✉</span>
-            </button>
-          </div>
+        </div>
+      )}
+
+      {/* Hero Buttons - Bottom of Section */}
+      {showHeroSection && (
+        <div className="hero-buttons-bottom slide-in-up" style={{ animationDelay: '0.8s' }}>
+          <button className="cyber-button primary" onClick={() => onSectionClick('projects')}>
+            <span className="button-text">View Projects</span>
+            <span className="button-icon">→</span>
+          </button>
+          <button className="cyber-button secondary" onClick={() => onSectionClick('contact')}>
+            <span className="button-text">Contact Me</span>
+            <span className="button-icon">✉</span>
+          </button>
         </div>
       )}
 
@@ -108,18 +120,6 @@ const HeroSection: React.FC<HeroSectionProps> = ({
             <span className="control-label">BLOOM</span>
           </label>
         </div>
-      </div>
-
-      {/* Scroll Indicator */}
-      <div
-        className="scroll-indicator fade-in"
-        onClick={() => onSectionClick('about')}
-        style={{ animationDelay: '1.2s' }}
-      >
-        <div className="mouse">
-          <div className="wheel"></div>
-        </div>
-        <p className="scroll-text">SCROLL</p>
       </div>
     </section>
   );
