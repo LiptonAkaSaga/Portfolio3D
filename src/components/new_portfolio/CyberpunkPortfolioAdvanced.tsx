@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useScrollAnimation } from '../../hooks/useScrollAnimation';
 import CyberNavbar from './sections/CyberNavbar';
 import HeroSection from './sections/HeroSection';
@@ -49,7 +49,6 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
     };
   }, []);
 
-  
   // Enhanced scroll management without snap behavior
   useEffect(() => {
     if (!isLoaded) return;
@@ -96,7 +95,7 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
     };
   }, [isLoaded, isScrolling]);
 
-  const scrollToSection = (sectionId: string) => {
+  const scrollToSection = useCallback((sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
       setIsScrolling(true);
@@ -110,7 +109,7 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
         setIsScrolling(false);
       }, 800);
     }
-  };
+  }, []);
 
   // Loading effect simulation
   useEffect(() => {
@@ -134,10 +133,13 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
         showBloom={showBloom}
         showHeroSection={showHeroSection}
         showHolographicRings={showHolographicRings}
-        onAsciiChange={setShowAscii}
-        onBloomChange={setShowBloom}
-        onHeroSectionChange={setShowHeroSection}
-        onHolographicRingsChange={setShowHolographicRings}
+        onAsciiChange={useCallback((value: boolean) => setShowAscii(value), [])}
+        onBloomChange={useCallback((value: boolean) => setShowBloom(value), [])}
+        onHeroSectionChange={useCallback((value: boolean) => setShowHeroSection(value), [])}
+        onHolographicRingsChange={useCallback(
+          (value: boolean) => setShowHolographicRings(value),
+          []
+        )}
         onSectionClick={scrollToSection}
       />
 

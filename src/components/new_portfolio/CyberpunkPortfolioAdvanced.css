@@ -11,6 +11,23 @@
   --cyber-light-grey: #2a2a2a;
 }
 
+/* ===== PERFORMANCE OPTIMIZATIONS ===== */
+/* Disable heavy animations for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .loader-scanlines,
+  .scanlines {
+    display: none !important;
+  }
+}
+
 /* ===== SCROLL SETUP ===== */
 html {
   scroll-behavior: smooth;
@@ -46,6 +63,8 @@ body {
   font-weight: 900;
   margin-bottom: 3rem;
   animation: loaderPulse 2s ease-in-out infinite;
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 .loader-logo .bracket {
@@ -103,6 +122,8 @@ body {
   box-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
   animation: loaderShimmer 1.5s linear infinite;
   position: relative;
+  will-change: background-position;
+  transform: translateZ(0);
 }
 
 .loader-fill::after {
@@ -114,6 +135,8 @@ body {
   bottom: 0;
   background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
   animation: loaderGlow 1s linear infinite;
+  will-change: opacity;
+  transform: translateZ(0);
 }
 
 @keyframes loaderShimmer {
@@ -151,6 +174,8 @@ body {
   letter-spacing: 3px;
   text-shadow: 0 0 10px #00ff00;
   animation: loaderTextBlink 1.5s ease-in-out infinite;
+  will-change: opacity;
+  transform: translateZ(0);
 }
 
 @keyframes loaderTextBlink {
@@ -181,6 +206,8 @@ body {
   border-radius: 50%;
   box-shadow: 0 0 5px #00ffff;
   animation: loaderParticleFall linear infinite;
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 @keyframes loaderParticleFall {
@@ -216,6 +243,8 @@ body {
   pointer-events: none;
   z-index: 5;
   animation: scanlineMove 8s linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 /* ===== MAIN PORTFOLIO ANIMATIONS ===== */
@@ -258,6 +287,7 @@ body {
   opacity: 0;
   transform: translateY(30px);
   animation: slideInUp 0.8s ease-out forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes slideInUp {
@@ -272,6 +302,7 @@ body {
   opacity: 0;
   transform: translateX(-30px);
   animation: slideInLeft 0.8s ease-out forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes slideInLeft {
@@ -286,6 +317,7 @@ body {
   opacity: 0;
   transform: translateX(30px);
   animation: slideInRight 0.8s ease-out forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes slideInRight {
@@ -300,6 +332,7 @@ body {
   opacity: 0;
   transform: scale(0.8);
   animation: scaleIn 0.8s ease-out forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes scaleIn {
@@ -314,6 +347,7 @@ body {
   opacity: 0;
   transform: translateY(-10px);
   animation: navLinkFadeIn 0.5s ease-out forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes navLinkFadeIn {
@@ -573,6 +607,8 @@ html {
   color: var(--text-primary);
   text-shadow: var(--glow-cyan);
   animation: pulse 2s ease-in-out infinite;
+  will-change: opacity;
+  transform: translateZ(0);
 }
 
 .nav-links {
@@ -734,11 +770,15 @@ html {
 .glitch::before {
   color: var(--cyber-cyan);
   animation: glitch1 2s infinite;
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 .glitch::after {
   color: var(--cyber-magenta);
   animation: glitch2 2s infinite;
+  will-change: transform, opacity;
+  transform: translateZ(0);
 }
 
 .hero-description {
@@ -863,7 +903,6 @@ html {
   box-shadow: 0 8px 32px rgba(0, 255, 255, 0.2);
   min-width: 180px;
 }
-
 
 .panel-title {
   font-size: 0.9rem;
@@ -1093,6 +1132,8 @@ html {
   margin: 0 auto;
   background: linear-gradient(90deg, transparent, var(--cyber-cyan), transparent);
   animation: pulse 2s ease-in-out infinite;
+  will-change: opacity;
+  transform: translateZ(0);
 }
 
 /* ===== ABOUT SECTION ===== */
@@ -1697,6 +1738,8 @@ html {
 
 .cyber-button.submitting .button-text {
   animation: pulse 1.5s ease-in-out infinite;
+  will-change: opacity;
+  transform: translateZ(0);
 }
 
 /* Spinner Animation */
@@ -1707,11 +1750,17 @@ html {
   border-top: 2px solid currentColor;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+  will-change: transform;
+  transform: translateZ(0);
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* ===== FOOTER ===== */
@@ -1897,11 +1946,21 @@ html {
     transform: translateX(0);
   }
 
-  .nav-links.mobile-open li:nth-child(1) { transition-delay: 0.1s; }
-  .nav-links.mobile-open li:nth-child(2) { transition-delay: 0.15s; }
-  .nav-links.mobile-open li:nth-child(3) { transition-delay: 0.2s; }
-  .nav-links.mobile-open li:nth-child(4) { transition-delay: 0.25s; }
-  .nav-links.mobile-open li:nth-child(5) { transition-delay: 0.3s; }
+  .nav-links.mobile-open li:nth-child(1) {
+    transition-delay: 0.1s;
+  }
+  .nav-links.mobile-open li:nth-child(2) {
+    transition-delay: 0.15s;
+  }
+  .nav-links.mobile-open li:nth-child(3) {
+    transition-delay: 0.2s;
+  }
+  .nav-links.mobile-open li:nth-child(4) {
+    transition-delay: 0.25s;
+  }
+  .nav-links.mobile-open li:nth-child(5) {
+    transition-delay: 0.3s;
+  }
 
   .nav-link {
     padding: 1rem 0;

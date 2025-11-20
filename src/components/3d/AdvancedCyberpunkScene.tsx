@@ -7,11 +7,12 @@ import * as THREE from 'three';
 import AsciiHead from './AsciiHead';
 import { TextureAsciiEffect } from './TextureAsciiEffect';
 
-// Performance-optimized Floating Particles
-const FloatingParticles: React.FC = () => {
-  const particlesRef = useRef<THREE.Points>(null);
-  const PARTICLE_COUNT = 100; // Zmniejszono z 250 do 100
+// Performance-optimized Floating Particles with GPU Instancing
+const FloatingParticles: React.FC = React.memo(() => {
+  const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
+  const PARTICLE_COUNT = 100;
   const lastUpdateRef = useRef(0);
+  const tempObject = useRef(new THREE.Object3D());
 
   const [positions, speeds] = React.useMemo(() => {
     const pos = new Float32Array(PARTICLE_COUNT * 3);
@@ -27,69 +28,75 @@ const FloatingParticles: React.FC = () => {
     return [pos, spd];
   }, []);
 
+  // Initialize instanced mesh positions
+  React.useEffect(() => {
+    if (!instancedMeshRef.current) return;
+
+    for (let i = 0; i < PARTICLE_COUNT; i++) {
+      tempObject.current.position.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+      tempObject.current.updateMatrix();
+      instancedMeshRef.current.setMatrixAt(i, tempObject.current.matrix);
+    }
+    instancedMeshRef.current.instanceMatrix.needsUpdate = true;
+  }, [positions]);
+
   useFrame((state, delta) => {
-    if (!particlesRef.current) return;
+    if (!instancedMeshRef.current) return;
 
     // Ogranicz aktualizacje do 30 FPS dla particli
     const now = state.clock.elapsedTime * 1000;
     if (now - lastUpdateRef.current < 33) return; // ~30 FPS
     lastUpdateRef.current = now;
 
-    const posArray = particlesRef.current.geometry.attributes.position.array as Float32Array;
-
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       // Move particles down
-      posArray[i * 3 + 1] -= speeds[i] * delta * 2;
+      positions[i * 3 + 1] -= speeds[i] * delta * 2;
 
       // Reset to top when reaching bottom
-      if (posArray[i * 3 + 1] < -10) {
-        posArray[i * 3 + 1] = 10;
-        posArray[i * 3] = (Math.random() - 0.5) * 15;
-        posArray[i * 3 + 2] = (Math.random() - 0.5) * 10;
+      if (positions[i * 3 + 1] < -10) {
+        positions[i * 3 + 1] = 10;
+        positions[i * 3] = (Math.random() - 0.5) * 15;
+        positions[i * 3 + 2] = (Math.random() - 0.5) * 10;
       }
 
       // Zmniejszony horizontal drift
-      posArray[i * 3] += Math.sin(state.clock.elapsedTime + i) * 0.0005;
+      positions[i * 3] += Math.sin(state.clock.elapsedTime + i) * 0.0005;
+
+      // Update instance matrix
+      tempObject.current.position.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]);
+      tempObject.current.updateMatrix();
+      instancedMeshRef.current.setMatrixAt(i, tempObject.current.matrix);
     }
 
-    particlesRef.current.geometry.attributes.position.needsUpdate = true;
+    instancedMeshRef.current.instanceMatrix.needsUpdate = true;
   });
 
   return (
-    <points ref={particlesRef}>
-      <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          count={PARTICLE_COUNT}
-          array={positions}
-          itemSize={3}
-          args={[positions, 3]}
-        />
-      </bufferGeometry>
-      <pointsMaterial
-        size={0.04}
+    <instancedMesh ref={instancedMeshRef} args={[undefined, undefined, PARTICLE_COUNT]}>
+      <sphereGeometry args={[0.02, 8, 8]} />
+      <meshBasicMaterial
         color="#00ffff"
         transparent
         opacity={0.6}
-        sizeAttenuation
         blending={THREE.AdditiveBlending}
+        depthWrite={false}
       />
-    </points>
+    </instancedMesh>
   );
-};
+});
 
 // Grid Floor
-const GridFloor: React.FC = () => {
+const GridFloor: React.FC = React.memo(() => {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]}>
       <planeGeometry args={[20, 20, 20, 20]} />
       <meshBasicMaterial color="#00ffff" wireframe transparent opacity={0.1} />
     </mesh>
   );
-};
+});
 
 // Holographic Rings
-const HolographicRings: React.FC = () => {
+const HolographicRings: React.FC = React.memo(() => {
   const ringRefs = useRef<THREE.Mesh[]>([]);
 
   useFrame((state) => {
@@ -123,7 +130,7 @@ const HolographicRings: React.FC = () => {
       ))}
     </>
   );
-};
+});
 
 // Scene Content
 const SceneContent: React.FC<{ modelPath: string; enableHolographicRings: boolean }> = ({
@@ -172,7 +179,6 @@ interface AdvancedCyberpunkSceneProps {
   backgroundColor?: string;
 }
 
-
 const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
   enableAscii = true,
   enableBloom = true,
@@ -196,7 +202,9 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
 
       const debugInfo = (gl as WebGLRenderingContext).getExtension('WEBGL_debug_renderer_info');
       if (debugInfo) {
-        const renderer = (gl as WebGLRenderingContext).getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+        const renderer = (gl as WebGLRenderingContext).getParameter(
+          debugInfo.UNMASKED_RENDERER_WEBGL
+        );
         // Wykryj integracje karty graficzne (słabsze urządzenia)
         if (renderer.includes('Intel') && !renderer.includes('Iris')) {
           setIsLowPerformance(true);
@@ -217,13 +225,15 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
       if (e.key === 'p' || e.key === 'P') {
         pressCount.current++;
         if (pressCount.current >= 3) {
-          setIsDebugMode(prev => !prev);
+          setIsDebugMode((prev) => !prev);
           pressCount.current = 0;
           console.log('🎮 Debug mode:', !isDebugMode ? 'enabled' : 'disabled');
         }
       }
       // Reset po 1 sekundzie
-      setTimeout(() => { pressCount.current = 0; }, 1000);
+      setTimeout(() => {
+        pressCount.current = 0;
+      }, 1000);
     };
 
     window.addEventListener('keypress', handleKeyPress);
@@ -247,7 +257,7 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
             fontSize: '12px',
             zIndex: 1000,
             border: '1px solid #00ff00',
-            minWidth: '200px'
+            minWidth: '200px',
           }}
         >
           <div style={{ marginBottom: '10px', fontSize: '14px', fontWeight: 'bold' }}>
@@ -269,7 +279,7 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
             Antialias: {!isLowPerformance ? '✅ ON' : '❌ OFF'}
           </div>
           <div style={{ marginBottom: '15px' }}>
-            Holographic Rings: {(!isLowPerformance && enableHolographicRings) ? '✅ ON' : '❌ OFF'}
+            Holographic Rings: {!isLowPerformance && enableHolographicRings ? '✅ ON' : '❌ OFF'}
           </div>
           <div style={{ borderTop: '1px solid #00ff00', paddingTop: '10px', marginBottom: '10px' }}>
             <button
@@ -282,15 +292,13 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
                 borderRadius: '4px',
                 cursor: 'pointer',
                 width: '100%',
-                fontWeight: 'bold'
+                fontWeight: 'bold',
               }}
             >
               {isLowPerformance ? 'FORCE HIGH PERF' : 'FORCE LOW PERF'}
             </button>
           </div>
-          <div style={{ fontSize: '10px', opacity: 0.7 }}>
-            Press 'P' 3x to close
-          </div>
+          <div style={{ fontSize: '10px', opacity: 0.7 }}>Press 'P' 3x to close</div>
         </div>
       )}
 
@@ -299,7 +307,7 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
         gl={{
           antialias: !isLowPerformance, // Wyłącz antialiasing na słabszych urządzeniach
           alpha: false,
-          powerPreference: 'high-performance'
+          powerPreference: 'high-performance',
         }}
         style={{ background: backgroundColor }}
         dpr={isLowPerformance ? 1 : Math.min(window.devicePixelRatio, 2)} // Ogranicz DPI na słabszych urządzeniach
@@ -307,30 +315,30 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
       >
         <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={35} />
 
-        <SceneContent modelPath={modelPath} enableHolographicRings={enableHolographicRings && !isLowPerformance} />
+        <SceneContent
+          modelPath={modelPath}
+          enableHolographicRings={enableHolographicRings && !isLowPerformance}
+        />
 
         {/* Post-processing z adaptacyjną jakością */}
         <EffectComposer>
-          {enableAscii ? (
+          {enableAscii && !isLowPerformance ? (
             <TextureAsciiEffect
-              cellSize={isLowPerformance ? [12, 16] : [8, 12]}
-              brightness={isLowPerformance ? 2.5 : 2.9}
+              cellSize={[8, 12]}
+              brightness={2.9}
               color1={[0.0, 0.4, 0.6]}
               color2={[0.0, 0.8, 1.0]}
             />
-          ) : (
-            <></>
-          )}
+          ) : null}
           {enableBloom ? (
             <Bloom
-              intensity={isLowPerformance ? 0.3 : 0.6}
+              intensity={isLowPerformance ? 0.25 : 0.3}
               luminanceThreshold={0.2}
               luminanceSmoothing={0.9}
               blendFunction={BlendFunction.ADD}
+              height={isLowPerformance ? 150 : 300}
             />
-          ) : (
-            <></>
-          )}
+          ) : null}
         </EffectComposer>
       </Canvas>
 
