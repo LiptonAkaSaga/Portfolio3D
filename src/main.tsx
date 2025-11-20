@@ -12,8 +12,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <Router>
       <Routes>
         <Route path="/" element={<App />} />
-        <Route path="/cyberpunk-advanced" element={<CyberpunkPortfolioAdvanced />} />
-        <Route path="/cyberpunk-intro" element={<CyberpunkIntro />} />
+        <Route path="/new" element={<CyberpunkPortfolioAdvanced />} />
+        <Route path="/intro" element={<CyberpunkIntro />} />
       </Routes>
     </Router>
   </React.StrictMode>

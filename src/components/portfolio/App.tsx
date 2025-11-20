@@ -58,7 +58,6 @@ const App: React.FC = () => {
         });
 
         video.load();
-
       } catch (error) {
         console.warn('⚠ Failed to preload video with Blob URL:', error);
 
@@ -130,7 +129,7 @@ const App: React.FC = () => {
 
   const handleVideoComplete = () => {
     // Przekierowanie do nowej strony portfolio
-    navigate('/cyberpunk-intro');
+    navigate('/intro');
     setShowVideo(false);
   };
 
@@ -165,7 +164,11 @@ const App: React.FC = () => {
       }}
     >
       {showVideo && (
-        <VideoPlayer preloadedVideo={preloadedVideo} onEnded={handleVideoComplete} autoPlay={true} />
+        <VideoPlayer
+          preloadedVideo={preloadedVideo}
+          onEnded={handleVideoComplete}
+          autoPlay={true}
+        />
       )}
 
       {showTVEffect && <TVTurnOffEffect onComplete={handleTVEffectComplete} duration={1.5} />}
