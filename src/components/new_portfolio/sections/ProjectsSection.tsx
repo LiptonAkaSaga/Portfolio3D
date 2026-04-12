@@ -26,6 +26,38 @@ const ProjectsSection: React.FC = () => {
 
   const projects: Project[] = [
     {
+      title: 'Aromelia.pl',
+      description:
+        'Large e-commerce store with complete custom design, modified theme, custom CSS and JavaScript for enhanced shopping experience.',
+      tech: ['WooCommerce', 'WordPress', 'Custom CSS', 'PHP', 'JavaScript', 'Custom Design'],
+      status: 'Live',
+      link: 'https://aromelia.pl',
+    },
+    {
+      title: 'Alicyna.com - One Product Store',
+      description:
+        'E-commerce single product store built with Elementor, custom CSS/JS modifications for cart and checkout flow optimization.',
+      tech: ['Elementor', 'WordPress', 'Custom CSS', 'JavaScript', 'WooCommerce'],
+      status: 'Live',
+      link: 'https://alicyna.com',
+    },
+    {
+      title: 'PusteKapsulki.pl',
+      description:
+        'E-commerce store built on PrestaShop with Creative Elements custom builder, custom CSS styling for product catalog.',
+      tech: ['PrestaShop', 'Creative Elements', 'Custom CSS', 'JavaScript', 'PHP'],
+      status: 'Live',
+      link: 'https://pustekapsulki.pl',
+    },
+    {
+      title: 'Electroviking.pl',
+      description:
+        'Landing page for electrician services built with Elementor and custom CSS styling.',
+      tech: ['Elementor', 'WordPress', 'Custom CSS'],
+      status: 'Live',
+      link: 'https://electroviking.pl',
+    },
+    {
       title: 'Cyberpunk styled 3D Portfolio',
       description: 'Interactive 3D portfolio with ASCII effects and WebGL shaders',
       tech: ['React', 'Three.js', 'WebGL', 'TypeScript', 'After Effects'],
@@ -40,15 +72,16 @@ const ProjectsSection: React.FC = () => {
       link: 'learnup',
     },
     {
-      title: 'Travel planning application',
+      title: 'Travel planning mobile application',
       description: 'A mobile application for planning and organizing trips',
-      tech: ['React', 'ReactNative', 'Docker', 'Node.js'],
+      tech: ['React Native', 'Docker', 'Node.js', 'Expo', 'NestJS'],
       status: 'In Progress',
       link: '#',
     },
     {
       title: 'Symfony Blog Platform',
-      description: 'Simple blog platform built with Symfony and Docker',
+      description:
+        'Simple blog platform built with Symfony and Docker, makes for university project',
       tech: ['Symfony', 'Docker', 'PostgreSQL'],
       status: 'Live',
       link: '#',
@@ -56,17 +89,9 @@ const ProjectsSection: React.FC = () => {
     {
       title: 'App for arranging meetings',
       description:
-        'A web application for scheduling and managing meetings integrated with Google Calendar',
+        'A web application for scheduling and managing meetings integrated with Google Calendar, makes for university project',
       tech: ['PHP', 'JavaScript', 'Bootstrap', 'MySQL'],
       status: 'Beta',
-      link: '#',
-    },
-    {
-      title: 'Mobile app for arranging meetings',
-      description:
-        'A mobile application for scheduling and managing meetings integrated with Google Calendar',
-      tech: ['React Native', 'Firebase', 'TypeScript'],
-      status: 'In Progress',
       link: '#',
     },
   ];
