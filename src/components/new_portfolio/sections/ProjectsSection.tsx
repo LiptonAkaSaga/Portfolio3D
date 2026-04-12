@@ -34,12 +34,12 @@ const ProjectsSection: React.FC = () => {
       link: 'https://aromelia.pl',
     },
     {
-      title: 'Alicyna.com - One Product Store',
+      title: 'Allicyna.com - One Product Store',
       description:
         'E-commerce single product store built with Elementor, custom CSS/JS modifications for cart and checkout flow optimization.',
       tech: ['Elementor', 'WordPress', 'Custom CSS', 'JavaScript', 'WooCommerce'],
       status: 'Live',
-      link: 'https://alicyna.com',
+      link: 'https://allicyna.com',
     },
     {
       title: 'PusteKapsulki.pl',
@@ -83,7 +83,7 @@ const ProjectsSection: React.FC = () => {
       description:
         'Simple blog platform built with Symfony and Docker, makes for university project',
       tech: ['Symfony', 'Docker', 'PostgreSQL'],
-      status: 'Live',
+      status: 'Beta',
       link: '#',
     },
     {

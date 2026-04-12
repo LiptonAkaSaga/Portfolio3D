@@ -1165,7 +1165,7 @@ html {
 
 /* ===== CONTENT SECTIONS ===== */
 .content-section {
-  min-height: 100vh;
+  min-height: auto;
   padding: 100px 0;
   position: relative;
   opacity: 0;
@@ -1535,6 +1535,8 @@ html {
 /* ===== PROJECTS SECTION ===== */
 .projects-section {
   background: var(--bg-dark);
+  position: relative;
+  z-index: 1;
 }
 
 .projects-grid {
