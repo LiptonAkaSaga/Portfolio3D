@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useScrollAnimation } from '../../hooks/useScrollAnimation';
 import CyberNavbar from './sections/CyberNavbar';
 import HeroSection from './sections/HeroSection';
@@ -19,6 +19,9 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Use ref for scroll timeout to avoid recreation
+  const scrollTimeoutRef = useRef<number | undefined>(undefined);
 
   // Hook do animacji przy scrollowaniu
   useScrollAnimation();
@@ -49,51 +52,60 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
     };
   }, []);
 
-  // Enhanced scroll management without snap behavior
+  // Enhanced scroll management - use ref for timeout, debounce 16ms (one frame)
   useEffect(() => {
     if (!isLoaded) return;
 
-    let scrollTimeout: number;
+    let rafId: number;
 
     const handleScroll = () => {
       setIsScrolling(true);
 
       // Clear previous timeout
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
       }
 
-      // Update active section based on scroll position
-      const scrollPosition = window.scrollY + window.innerHeight / 2;
+      // Cancel previous frame request
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
 
-      for (const section of sections) {
-        const element = document.getElementById(section);
-        if (element) {
-          const offsetTop = element.offsetTop;
-          const offsetBottom = offsetTop + element.offsetHeight;
+      // Debounce at 16ms (one frame) using requestAnimationFrame
+      rafId = requestAnimationFrame(() => {
+        // Update active section based on scroll position
+        const scrollPosition = window.scrollY + window.innerHeight / 2;
 
-          if (scrollPosition >= offsetTop && scrollPosition < offsetBottom) {
-            setActiveSection(section);
-            break;
+        for (const section of sections) {
+          const element = document.getElementById(section);
+          if (element) {
+            const offsetTop = element.offsetTop;
+            const offsetBottom = offsetTop + element.offsetHeight;
+
+            if (scrollPosition >= offsetTop && scrollPosition < offsetBottom) {
+              setActiveSection(section);
+              break;
+            }
           }
         }
-      }
 
-      // Set scrolling to false after scroll ends
-      scrollTimeout = window.setTimeout(() => {
-        setIsScrolling(false);
-      }, 150);
+        // Set scrolling to false after scroll ends (faster: 100ms)
+        scrollTimeoutRef.current = window.setTimeout(() => {
+          setIsScrolling(false);
+        }, 100);
+      });
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
+      if (rafId) cancelAnimationFrame(rafId);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
       }
     };
-  }, [isLoaded, isScrolling]);
+  }, [isLoaded, sections]);
 
   const scrollToSection = useCallback((sectionId: string) => {
     const element = document.getElementById(sectionId);
@@ -111,11 +123,12 @@ const CyberpunkPortfolioAdvanced: React.FC = () => {
     }
   }, []);
 
-  // Loading effect simulation
+  // Loading effect - instant load, CSS handles animations
   useEffect(() => {
+    // Small delay only to allow initial render, then enable animations
     const timer = setTimeout(() => {
       setIsLoaded(true);
-    }, 2000);
+    }, 100);
 
     return () => {
       clearTimeout(timer);

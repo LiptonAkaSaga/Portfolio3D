@@ -1,16 +1,20 @@
-import React, { Suspense, useRef, useState } from 'react';
+import React, { Suspense, useRef, useState, useCallback, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { PerspectiveCamera, Environment } from '@react-three/drei';
+import { PerspectiveCamera } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { BlendFunction } from 'postprocessing';
 import * as THREE from 'three';
 import AsciiHead from './AsciiHead';
 import { TextureAsciiEffect } from './TextureAsciiEffect';
 
-// Performance-optimized Floating Particles with GPU Instancing
-const FloatingParticles: React.FC = React.memo(() => {
+// Performance-optimized Floating Particles with adaptive count
+interface FloatingParticlesProps {
+  isLowPerformance: boolean;
+}
+
+const FloatingParticles: React.FC<FloatingParticlesProps> = React.memo(({ isLowPerformance }) => {
   const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
-  const PARTICLE_COUNT = 100;
+  const PARTICLE_COUNT = isLowPerformance ? 20 : 100;
   const lastUpdateRef = useRef(0);
   const tempObject = useRef(new THREE.Object3D());
 
@@ -26,7 +30,7 @@ const FloatingParticles: React.FC = React.memo(() => {
     }
 
     return [pos, spd];
-  }, []);
+  }, [PARTICLE_COUNT]);
 
   // Initialize instanced mesh positions
   React.useEffect(() => {
@@ -38,14 +42,15 @@ const FloatingParticles: React.FC = React.memo(() => {
       instancedMeshRef.current.setMatrixAt(i, tempObject.current.matrix);
     }
     instancedMeshRef.current.instanceMatrix.needsUpdate = true;
-  }, [positions]);
+  }, [positions, PARTICLE_COUNT]);
 
   useFrame((state, delta) => {
     if (!instancedMeshRef.current) return;
 
-    // Ogranicz aktualizacje do 30 FPS dla particli
+    // Ogranicz aktualizacje do 30 FPS dla particli (lub 20 FPS na low-end)
+    const updateInterval = isLowPerformance ? 50 : 33;
     const now = state.clock.elapsedTime * 1000;
-    if (now - lastUpdateRef.current < 33) return; // ~30 FPS
+    if (now - lastUpdateRef.current < updateInterval) return;
     lastUpdateRef.current = now;
 
     for (let i = 0; i < PARTICLE_COUNT; i++) {
@@ -132,39 +137,37 @@ const HolographicRings: React.FC = React.memo(() => {
   );
 });
 
-// Scene Content
-const SceneContent: React.FC<{ modelPath: string; enableHolographicRings: boolean }> = ({
+// Scene Content - receives isLowPerformance to adapt rendering
+const SceneContent: React.FC<{ modelPath: string; enableHolographicRings: boolean; isLowPerformance: boolean }> = ({
   modelPath,
   enableHolographicRings,
+  isLowPerformance,
 }) => {
   return (
     <>
-      {/* Zoptymalizowane oświetlenie - mniej świateł i mniejsza intensywność */}
+      {/* Zoptymalizowane oświetlenie */}
       <ambientLight intensity={0.15} />
       <pointLight position={[-3, 3, -3]} color="#00aaff" intensity={2} distance={15} />
       <pointLight position={[3, 0, 0]} color="#ff00ff" intensity={3} distance={20} />
 
-      {/* Usunięto spotLight który był najbardziej kosztowny */}
+      {/* Usunięto Environment preset - oszczędza 1-2MB HDR load na GPU */}
 
-      {/* Main Model - z ograniczoną rotacją */}
+      {/* Main Model - wolniejsza rotacja na low-end */}
       <Suspense fallback={null}>
         <AsciiHead
           modelPath={modelPath}
           position={[0, -1.25, 0]}
           scale={0.13}
-          rotationSpeed={0.01}
+          rotationSpeed={isLowPerformance ? 0.005 : 0.01}
           maxRotationX={Math.PI / 30}
           maxRotationY={Math.PI / 4}
         />
       </Suspense>
 
-      {/* Additional Visual Elements */}
-      <FloatingParticles />
+      {/* Adaptive particle count */}
+      <FloatingParticles isLowPerformance={isLowPerformance} />
       <GridFloor />
       {enableHolographicRings && <HolographicRings />}
-
-      {/* Environment - mniejsza intensywność */}
-      <Environment preset="city" environmentIntensity={0.5} />
     </>
   );
 };
@@ -179,6 +182,113 @@ interface AdvancedCyberpunkSceneProps {
   backgroundColor?: string;
 }
 
+// Enhanced performance detection
+const detectLowPerformance = (): boolean => {
+  // No WebGL = definitely low performance
+  const canvas = document.createElement('canvas');
+  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (!gl) return true;
+
+  // Check GPU renderer
+  const debugInfo = (gl as WebGLRenderingContext).getExtension('WEBGL_debug_renderer_info');
+  if (debugInfo) {
+    const renderer = (gl as WebGLRenderingContext).getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+    // Integrated Intel GPUs (except Iris) are weak
+    if (renderer.includes('Intel') && !renderer.includes('Iris') && !renderer.includes('Arc')) {
+      return true;
+    }
+    // Mali/Adreno in low-power mode indicators
+    if (renderer.includes('Mali-4') || renderer.includes('Adreno (TM) 3')) {
+      return true;
+    }
+  }
+
+  // Low CPU cores
+  if (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) {
+    return true;
+  }
+
+  // Low device memory (Chrome only)
+  const deviceMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  if (deviceMemory !== undefined && deviceMemory < 4) {
+    return true;
+  }
+
+  // Battery saver mode (Chrome only)
+  if (
+    (navigator as Navigator & { getBattery?: () => Promise<{ charging: boolean; level: number }> })
+      .getBattery
+  ) {
+    // Will be checked async below
+  }
+
+  // High DPI screens need more GPU power
+  if (window.devicePixelRatio > 2 && navigator.hardwareConcurrency && navigator.hardwareConcurrency < 6) {
+    return true;
+  }
+
+  return false;
+};
+
+// Battery check async
+const checkBatterySaver = async (): Promise<boolean> => {
+  try {
+    const nav = navigator as Navigator & { getBattery?: () => Promise<{ charging: boolean; level: number }> };
+    if (nav.getBattery) {
+      const battery = await nav.getBattery();
+      // Battery saver: not charging and low battery
+      return !battery.charging && battery.level < 0.2;
+    }
+  } catch {
+    // Battery API not available
+  }
+  return false;
+};
+
+// FPS Monitor hook component
+const FPSMonitor: React.FC<{
+  onDegrade: () => void;
+  isLowPerformance: boolean;
+}> = ({ onDegrade, isLowPerformance }) => {
+  const frameTimesRef = useRef<number[]>([]);
+  const degradeCountRef = useRef(0);
+  const lastDegradeRef = useRef(0);
+
+  useFrame((_, delta) => {
+    // Skip if already in low performance mode
+    if (isLowPerformance) return;
+
+    const frameTime = delta * 1000; // Convert to ms
+    frameTimesRef.current.push(frameTime);
+
+    // Keep only last 60 frames
+    if (frameTimesRef.current.length > 60) {
+      frameTimesRef.current.shift();
+    }
+
+    // Check every 60 frames
+    if (frameTimesRef.current.length === 60) {
+      const avgFrameTime =
+        frameTimesRef.current.reduce((a, b) => a + b, 0) / frameTimesRef.current.length;
+
+      // Degrade if average frame time > 20ms (below 50 FPS) for 60 consecutive frames
+      if (avgFrameTime > 20) {
+        degradeCountRef.current++;
+        // Require sustained bad performance before degrading (prevents false positives)
+        if (degradeCountRef.current >= 2 && Date.now() - lastDegradeRef.current > 5000) {
+          onDegrade();
+          lastDegradeRef.current = Date.now();
+          degradeCountRef.current = 0;
+        }
+      } else {
+        degradeCountRef.current = 0;
+      }
+    }
+  });
+
+  return null;
+};
+
 const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
   enableAscii = true,
   enableBloom = true,
@@ -187,39 +297,22 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
   backgroundColor = '#000000',
 }) => {
   const [isLowPerformance, setIsLowPerformance] = useState(false);
+  const [isRuntimeLowPerformance, setIsRuntimeLowPerformance] = useState(false);
   const [isDebugMode, setIsDebugMode] = useState(false);
+  const [batteryLow, setBatteryLow] = useState(false);
+  const [fps, setFps] = useState(60);
 
-  // Wykryj urządzenia o niższej wydajności
+  // Combined low performance state
+  const isEffectivelyLowPerf = isLowPerformance || isRuntimeLowPerformance || batteryLow;
+
+  // Enhanced performance detection on mount
   React.useEffect(() => {
-    const checkPerformance = () => {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    setIsLowPerformance(detectLowPerformance());
 
-      if (!gl) {
-        setIsLowPerformance(true);
-        return;
-      }
+    // Check battery status async
+    checkBatterySaver().then(setBatteryLow);
 
-      const debugInfo = (gl as WebGLRenderingContext).getExtension('WEBGL_debug_renderer_info');
-      if (debugInfo) {
-        const renderer = (gl as WebGLRenderingContext).getParameter(
-          debugInfo.UNMASKED_RENDERER_WEBGL
-        );
-        // Wykryj integracje karty graficzne (słabsze urządzenia)
-        if (renderer.includes('Intel') && !renderer.includes('Iris')) {
-          setIsLowPerformance(true);
-        }
-      }
-
-      // Sprawdź liczbę rdzeni CPU
-      if (navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4) {
-        setIsLowPerformance(true);
-      }
-    };
-
-    checkPerformance();
-
-    // Debug mode - naciśnij 'P' 3x aby przełączyć
+    // Debug mode - press 'P' 3x
     const pressCount = { current: 0 };
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === 'p' || e.key === 'P') {
@@ -227,10 +320,8 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
         if (pressCount.current >= 3) {
           setIsDebugMode((prev) => !prev);
           pressCount.current = 0;
-          console.log('🎮 Debug mode:', !isDebugMode ? 'enabled' : 'disabled');
         }
       }
-      // Reset po 1 sekundzie
       setTimeout(() => {
         pressCount.current = 0;
       }, 1000);
@@ -240,8 +331,52 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
     return () => window.removeEventListener('keypress', handleKeyPress);
   }, []);
 
+  // FPS counter for debug display
+  const fpsRef = useRef<number[]>([]);
+  useEffect(() => {
+    if (!isDebugMode) return;
+    let rafId: number;
+    let lastTime = performance.now();
+    const measureFPS = () => {
+      const now = performance.now();
+      const delta = now - lastTime;
+      lastTime = now;
+      fpsRef.current.push(1000 / delta);
+      if (fpsRef.current.length > 30) fpsRef.current.shift();
+      const avgFps = Math.round(fpsRef.current.reduce((a, b) => a + b, 0) / fpsRef.current.length);
+      setFps(avgFps);
+      rafId = requestAnimationFrame(measureFPS);
+    };
+    rafId = requestAnimationFrame(measureFPS);
+    return () => cancelAnimationFrame(rafId);
+  }, [isDebugMode]);
+
+  const handleRuntimeDegrade = useCallback(() => {
+    setIsRuntimeLowPerformance(true);
+  }, []);
+
+  // Determine DPR based on device
+  const getDPR = (): number => {
+    if (isEffectivelyLowPerf) return 1;
+    if (window.devicePixelRatio > 2) return 1.5;
+    return Math.min(window.devicePixelRatio, 1.5); // Cap at 1.5 instead of 2
+  };
+
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative' }}>
+      {/* CSS glow fallback - replaces Bloom on very low-end */}
+      {isEffectivelyLowPerf && enableBloom && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'radial-gradient(ellipse at center, rgba(0,255,255,0.08) 0%, transparent 60%)',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        />
+      )}
+
       {/* Debug Panel */}
       {isDebugMode && (
         <div
@@ -257,33 +392,30 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
             fontSize: '12px',
             zIndex: 1000,
             border: '1px solid #00ff00',
-            minWidth: '200px',
+            minWidth: '220px',
           }}
         >
-          <div style={{ marginBottom: '10px', fontSize: '14px', fontWeight: 'bold' }}>
-            🎮 DEBUG MODE
+          <div style={{ marginBottom: '10px', fontSize: '14px', fontWeight: 'bold' }}>DEBUG MODE</div>
+          <div style={{ marginBottom: '4px' }}>CPU: {navigator.hardwareConcurrency || '?'} cores</div>
+          <div style={{ marginBottom: '4px' }}>
+            RAM:{' '}
+            {(navigator as Navigator & { deviceMemory?: number }).deviceMemory
+              ? `${(navigator as Navigator & { deviceMemory?: number }).deviceMemory}GB`
+              : '?'}
           </div>
+          <div style={{ marginBottom: '4px' }}>Battery: {batteryLow ? 'SAVER' : 'OK'}</div>
+          <div style={{ marginBottom: '4px' }}>FPS: {fps}</div>
           <div style={{ marginBottom: '8px' }}>
-            CPU Cores: {navigator.hardwareConcurrency || 'unknown'}
-          </div>
-          <div style={{ marginBottom: '8px' }}>
-            GPU: {(navigator as any).gpu?.vendor || 'unknown'}
-          </div>
-          <div style={{ marginBottom: '8px' }}>
-            Device: {isLowPerformance ? '🐌 LOW PERFORMANCE' : '🚀 HIGH PERFORMANCE'}
-          </div>
-          <div style={{ marginBottom: '8px' }}>
-            DPI: {isLowPerformance ? 1 : window.devicePixelRatio}
-          </div>
-          <div style={{ marginBottom: '8px' }}>
-            Antialias: {!isLowPerformance ? '✅ ON' : '❌ OFF'}
-          </div>
-          <div style={{ marginBottom: '15px' }}>
-            Holographic Rings: {!isLowPerformance && enableHolographicRings ? '✅ ON' : '❌ OFF'}
+            Mode:{' '}
+            {isEffectivelyLowPerf ? (
+              <span style={{ color: '#ff6b6b' }}>LOW {isRuntimeLowPerformance ? '(AUTO)' : '(STATIC)'}</span>
+            ) : (
+              <span style={{ color: '#00ff00' }}>HIGH</span>
+            )}
           </div>
           <div style={{ borderTop: '1px solid #00ff00', paddingTop: '10px', marginBottom: '10px' }}>
             <button
-              onClick={() => setIsLowPerformance(!isLowPerformance)}
+              onClick={() => setIsLowPerformance((prev) => !prev)}
               style={{
                 background: isLowPerformance ? '#ff0000' : '#00ff00',
                 color: '#000',
@@ -293,52 +425,59 @@ const AdvancedCyberpunkScene: React.FC<AdvancedCyberpunkSceneProps> = ({
                 cursor: 'pointer',
                 width: '100%',
                 fontWeight: 'bold',
+                fontSize: '11px',
               }}
             >
-              {isLowPerformance ? 'FORCE HIGH PERF' : 'FORCE LOW PERF'}
+              {isLowPerformance ? 'FORCE HIGH' : 'FORCE LOW'}
             </button>
           </div>
-          <div style={{ fontSize: '10px', opacity: 0.7 }}>Press 'P' 3x to close</div>
+          <div style={{ fontSize: '10px', opacity: 0.7 }}>Press P 3x to close</div>
         </div>
       )}
 
-      {/* 3D Canvas z optymalizacjami */}
+      {/* 3D Canvas */}
       <Canvas
         gl={{
-          antialias: !isLowPerformance, // Wyłącz antialiasing na słabszych urządzeniach
+          antialias: !isEffectivelyLowPerf,
           alpha: false,
           powerPreference: 'high-performance',
         }}
         style={{ background: backgroundColor }}
-        dpr={isLowPerformance ? 1 : Math.min(window.devicePixelRatio, 2)} // Ogranicz DPI na słabszych urządzeniach
-        performance={{ min: 0.5 }} // Ustaw minimalną jakość
+        dpr={getDPR()}
+        performance={{ min: isEffectivelyLowPerf ? 0.25 : 0.5 }}
       >
         <PerspectiveCamera makeDefault position={[0, 0, 8]} fov={35} />
 
         <SceneContent
           modelPath={modelPath}
-          enableHolographicRings={enableHolographicRings && !isLowPerformance}
+          enableHolographicRings={enableHolographicRings && !isEffectivelyLowPerf}
+          isLowPerformance={isEffectivelyLowPerf}
         />
 
-        {/* Post-processing z adaptacyjną jakością */}
+        {/* Runtime FPS monitor */}
+        {!isRuntimeLowPerformance && (
+          <FPSMonitor onDegrade={handleRuntimeDegrade} isLowPerformance={isEffectivelyLowPerf} />
+        )}
+
+        {/* Post-processing - more aggressive reduction on low-end */}
         <EffectComposer>
-          {enableAscii && !isLowPerformance ? (
+          {enableAscii && !isEffectivelyLowPerf ? (
             <TextureAsciiEffect
               cellSize={[8, 12]}
               brightness={2.9}
               color1={[0.0, 0.4, 0.6]}
               color2={[0.0, 0.8, 1.0]}
             />
-          ) : null}
+          ) : undefined as unknown as React.ReactElement}
           {enableBloom ? (
             <Bloom
-              intensity={isLowPerformance ? 0.25 : 0.3}
-              luminanceThreshold={0.2}
+              intensity={isEffectivelyLowPerf ? 0.15 : 0.3}
+              luminanceThreshold={isEffectivelyLowPerf ? 0.4 : 0.2}
               luminanceSmoothing={0.9}
               blendFunction={BlendFunction.ADD}
-              height={isLowPerformance ? 150 : 300}
+              height={isEffectivelyLowPerf ? 100 : 300}
             />
-          ) : null}
+          ) : undefined as unknown as React.ReactElement}
         </EffectComposer>
       </Canvas>
 
